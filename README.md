@@ -4,7 +4,7 @@
 TF-IDF 特征工程，到朴素贝叶斯 / 逻辑回归 / 支持向量机 / 多层感知机四种
 经典分类器的超参数调优与最终预测，形成了一条完整、可复现的实验链路。
 
-> 完整实验报告见 `report/实验一_文本分类_实验报告.pdf`（不超过 5 页）。
+> 完整实验报告见 `report/实验一_文本分类_实验报告.pdf`。
 
 ---
 
@@ -26,9 +26,9 @@ pip install -r requirements.txt
 
 ```
 qhf/
-├── main.py                       # 统一入口：一条命令跑完整实验
+├── main.py                       
 ├── requirements.txt
-├── predictions.csv               # ★ 最终提交文件（对无标签测试集的预测）
+├── predictions.csv               
 ├── data/
 │   ├── train_data.csv            # 7368 条带标签训练数据
 │   ├── test_data_unlabeled.csv   # 2457 条待预测数据
