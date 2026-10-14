@@ -1,0 +1,8 @@
+# 依赖清单 —— 当代人工智能实验一：文本分类
+#
+# 安装：pip install -r requirements.txt
+numpy>=2.0
+pandas>=2.2
+scikit-learn>=1.5
+matplotlib>=3.8
+nltk>=3.8

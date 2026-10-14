@@ -1,0 +1,27 @@
+{
+  "n_train": 5894,
+  "n_test": 2457,
+  "n_classes": 10,
+  "class_counts": {
+    "0": 584,
+    "1": 591,
+    "2": 590,
+    "3": 594,
+    "4": 597,
+    "5": 596,
+    "6": 594,
+    "7": 590,
+    "8": 594,
+    "9": 564
+  },
+  "class_ratio_max_min": 1.0585,
+  "dup_text_train": 0,
+  "text_len_mean": 1862.4,
+  "text_len_median": 1138,
+  "text_len_max": 160616,
+  "text_len_p95": 4183,
+  "val_size_ratio": 0.2001,
+  "n_train_split": 5894,
+  "n_val": 1474,
+  "figure_class_distribution": "C:\\Users\\haofeng\\WorkBuddy\\2026-10-14-11-14-23\\work\\qhf\\results\\figures\\fig1_class_distribution.png"
+}

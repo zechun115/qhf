@@ -1,0 +1,54 @@
+{
+  "rows": [
+    {
+      "name": "F0_binary词频",
+      "config": "max_features=20000, ngram=1-gram, min_df=2, max_df=0.9, sublinear_tf=False, use_idf=False",
+      "n_features": 20000,
+      "vectorize_seconds": 2.549,
+      "accuracy": 0.8962,
+      "macro_f1": 0.8967
+    },
+    {
+      "name": "F1_TF-IDF(sublinear)",
+      "config": "max_features=20000, ngram=1-gram, min_df=2, max_df=0.9, sublinear_tf=True, use_idf=True",
+      "n_features": 20000,
+      "vectorize_seconds": 2.558,
+      "accuracy": 0.9342,
+      "macro_f1": 0.9345
+    },
+    {
+      "name": "F2_词表5k",
+      "config": "max_features=5000, ngram=1-gram, min_df=2, max_df=0.9, sublinear_tf=True, use_idf=True",
+      "n_features": 5000,
+      "vectorize_seconds": 2.456,
+      "accuracy": 0.9118,
+      "macro_f1": 0.9121
+    },
+    {
+      "name": "F3_词表50k",
+      "config": "max_features=50000, ngram=1-gram, min_df=2, max_df=0.9, sublinear_tf=True, use_idf=True",
+      "n_features": 32101,
+      "vectorize_seconds": 2.506,
+      "accuracy": 0.9369,
+      "macro_f1": 0.9372
+    },
+    {
+      "name": "F4_加入bigram",
+      "config": "max_features=20000, ngram=1-2-gram, min_df=2, max_df=0.9, sublinear_tf=True, use_idf=True",
+      "n_features": 20000,
+      "vectorize_seconds": 7.39,
+      "accuracy": 0.9213,
+      "macro_f1": 0.9219
+    },
+    {
+      "name": "F5_min_df=1",
+      "config": "max_features=20000, ngram=1-gram, min_df=1, max_df=0.9, sublinear_tf=True, use_idf=True",
+      "n_features": 20000,
+      "vectorize_seconds": 2.652,
+      "accuracy": 0.9349,
+      "macro_f1": 0.9352
+    }
+  ],
+  "best": "F3_词表50k",
+  "figure": "C:\\Users\\haofeng\\WorkBuddy\\2026-10-14-11-14-23\\work\\qhf\\results\\figures\\fig3_feature_ablation.png"
+}

@@ -1,0 +1,7 @@
+﻿name,config,n_features,vectorize_seconds,accuracy,macro_f1
+F0_binary词频,"max_features=20000, ngram=1-gram, min_df=2, max_df=0.9, sublinear_tf=False, use_idf=False",20000,2.549,0.8962,0.8967
+F1_TF-IDF(sublinear),"max_features=20000, ngram=1-gram, min_df=2, max_df=0.9, sublinear_tf=True, use_idf=True",20000,2.558,0.9342,0.9345
+F2_词表5k,"max_features=5000, ngram=1-gram, min_df=2, max_df=0.9, sublinear_tf=True, use_idf=True",5000,2.456,0.9118,0.9121
+F3_词表50k,"max_features=50000, ngram=1-gram, min_df=2, max_df=0.9, sublinear_tf=True, use_idf=True",32101,2.506,0.9369,0.9372
+F4_加入bigram,"max_features=20000, ngram=1-2-gram, min_df=2, max_df=0.9, sublinear_tf=True, use_idf=True",20000,7.39,0.9213,0.9219
+F5_min_df=1,"max_features=20000, ngram=1-gram, min_df=1, max_df=0.9, sublinear_tf=True, use_idf=True",20000,2.652,0.9349,0.9352

@@ -1,0 +1,268 @@
+{
+  "rows": [
+    {
+      "model": "NB",
+      "params": "alpha=0.01",
+      "train_seconds": 0.023,
+      "predict_seconds": 0.0048,
+      "accuracy": 0.9199,
+      "macro_f1": 0.9205,
+      "weighted_f1": 0.9204,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "NB",
+      "params": "alpha=0.05",
+      "train_seconds": 0.023,
+      "predict_seconds": 0.0044,
+      "accuracy": 0.924,
+      "macro_f1": 0.9247,
+      "weighted_f1": 0.9246,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "NB",
+      "params": "alpha=0.1",
+      "train_seconds": 0.023,
+      "predict_seconds": 0.005,
+      "accuracy": 0.9254,
+      "macro_f1": 0.9259,
+      "weighted_f1": 0.9258,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "NB",
+      "params": "alpha=0.5",
+      "train_seconds": 0.023,
+      "predict_seconds": 0.0047,
+      "accuracy": 0.9193,
+      "macro_f1": 0.9198,
+      "weighted_f1": 0.9197,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "NB",
+      "params": "alpha=1.0",
+      "train_seconds": 0.025,
+      "predict_seconds": 0.0045,
+      "accuracy": 0.9098,
+      "macro_f1": 0.9101,
+      "weighted_f1": 0.91,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "NB",
+      "params": "alpha=2.0",
+      "train_seconds": 0.026,
+      "predict_seconds": 0.0063,
+      "accuracy": 0.8935,
+      "macro_f1": 0.8938,
+      "weighted_f1": 0.8937,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "LR",
+      "params": "C=0.1, solver=lbfgs",
+      "train_seconds": 0.954,
+      "predict_seconds": 0.0036,
+      "accuracy": 0.8847,
+      "macro_f1": 0.8857,
+      "weighted_f1": 0.8857,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "LR",
+      "params": "C=1.0, solver=lbfgs",
+      "train_seconds": 4.197,
+      "predict_seconds": 0.0046,
+      "accuracy": 0.9159,
+      "macro_f1": 0.9167,
+      "weighted_f1": 0.9166,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "LR",
+      "params": "C=10.0, solver=lbfgs",
+      "train_seconds": 5.042,
+      "predict_seconds": 0.0046,
+      "accuracy": 0.9369,
+      "macro_f1": 0.9372,
+      "weighted_f1": 0.9371,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "LR",
+      "params": "C=100.0, solver=lbfgs",
+      "train_seconds": 5.606,
+      "predict_seconds": 0.0048,
+      "accuracy": 0.9383,
+      "macro_f1": 0.9385,
+      "weighted_f1": 0.9385,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "SVM",
+      "params": "kernel=linear, C=0.1",
+      "train_seconds": 92.366,
+      "predict_seconds": 14.2453,
+      "accuracy": 0.827,
+      "macro_f1": 0.8376,
+      "weighted_f1": 0.8377,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "SVM",
+      "params": "kernel=linear, C=1.0",
+      "train_seconds": 67.175,
+      "predict_seconds": 12.0258,
+      "accuracy": 0.9294,
+      "macro_f1": 0.9298,
+      "weighted_f1": 0.9298,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "SVM",
+      "params": "kernel=linear, C=10.0",
+      "train_seconds": 75.283,
+      "predict_seconds": 11.9087,
+      "accuracy": 0.9322,
+      "macro_f1": 0.9326,
+      "weighted_f1": 0.9326,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "SVM",
+      "params": "kernel=linear, C=100.0",
+      "train_seconds": 67.552,
+      "predict_seconds": 10.6833,
+      "accuracy": 0.9328,
+      "macro_f1": 0.9333,
+      "weighted_f1": 0.9333,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "MLP",
+      "params": "hidden_layer_sizes=(50,)",
+      "train_seconds": 102.928,
+      "predict_seconds": 0.0141,
+      "accuracy": 0.9301,
+      "macro_f1": 0.9309,
+      "weighted_f1": 0.9308,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "MLP",
+      "params": "hidden_layer_sizes=(100,)",
+      "train_seconds": 205.323,
+      "predict_seconds": 0.0264,
+      "accuracy": 0.9328,
+      "macro_f1": 0.9332,
+      "weighted_f1": 0.9332,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "MLP",
+      "params": "hidden_layer_sizes=(200,)",
+      "train_seconds": 329.58,
+      "predict_seconds": 0.0483,
+      "accuracy": 0.9301,
+      "macro_f1": 0.9306,
+      "weighted_f1": 0.9306,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "MLP",
+      "params": "hidden_layer_sizes=(100, 50)",
+      "train_seconds": 172.678,
+      "predict_seconds": 0.0248,
+      "accuracy": 0.9288,
+      "macro_f1": 0.9292,
+      "weighted_f1": 0.9291,
+      "grid_stage": "主网格"
+    },
+    {
+      "model": "MLP",
+      "params": "hidden_layer_sizes=(100,), alpha=0.0001",
+      "train_seconds": 201.906,
+      "predict_seconds": 0.0205,
+      "accuracy": 0.9328,
+      "macro_f1": 0.9332,
+      "weighted_f1": 0.9332,
+      "grid_stage": "alpha搜索"
+    },
+    {
+      "model": "MLP",
+      "params": "hidden_layer_sizes=(100,), alpha=0.001",
+      "train_seconds": 180.023,
+      "predict_seconds": 0.0275,
+      "accuracy": 0.9335,
+      "macro_f1": 0.9339,
+      "weighted_f1": 0.9338,
+      "grid_stage": "alpha搜索"
+    },
+    {
+      "model": "MLP",
+      "params": "hidden_layer_sizes=(100,), alpha=0.01",
+      "train_seconds": 180.26,
+      "predict_seconds": 0.0201,
+      "accuracy": 0.9362,
+      "macro_f1": 0.9364,
+      "weighted_f1": 0.9364,
+      "grid_stage": "alpha搜索"
+    },
+    {
+      "model": "MLP",
+      "params": "hidden_layer_sizes=(100,), alpha=0.1",
+      "train_seconds": 192.184,
+      "predict_seconds": 0.0216,
+      "accuracy": 0.9389,
+      "macro_f1": 0.9391,
+      "weighted_f1": 0.9391,
+      "grid_stage": "alpha搜索"
+    }
+  ],
+  "best": {
+    "NB": {
+      "model": "NB",
+      "params": "alpha=0.1",
+      "train_seconds": 0.023,
+      "predict_seconds": 0.005,
+      "accuracy": 0.9254,
+      "macro_f1": 0.9259,
+      "weighted_f1": 0.9258,
+      "grid_stage": "主网格"
+    },
+    "LR": {
+      "model": "LR",
+      "params": "C=100.0, solver=lbfgs",
+      "train_seconds": 5.606,
+      "predict_seconds": 0.0048,
+      "accuracy": 0.9383,
+      "macro_f1": 0.9385,
+      "weighted_f1": 0.9385,
+      "grid_stage": "主网格"
+    },
+    "SVM": {
+      "model": "SVM",
+      "params": "kernel=linear, C=100.0",
+      "train_seconds": 67.552,
+      "predict_seconds": 10.6833,
+      "accuracy": 0.9328,
+      "macro_f1": 0.9333,
+      "weighted_f1": 0.9333,
+      "grid_stage": "主网格"
+    },
+    "MLP": {
+      "model": "MLP",
+      "params": "hidden_layer_sizes=(100,), alpha=0.1",
+      "train_seconds": 192.184,
+      "predict_seconds": 0.0216,
+      "accuracy": 0.9389,
+      "macro_f1": 0.9391,
+      "weighted_f1": 0.9391,
+      "grid_stage": "alpha搜索"
+    }
+  },
+  "figure_param_curves": "C:\\Users\\haofeng\\WorkBuddy\\2026-10-14-11-14-23\\work\\qhf\\results\\figures\\fig4_param_curves.png",
+  "figure_model_comparison": "C:\\Users\\haofeng\\WorkBuddy\\2026-10-14-11-14-23\\work\\qhf\\results\\figures\\fig6_model_comparison.png"
+}

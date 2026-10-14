@@ -1,0 +1,399 @@
+{
+  "accuracy": 0.9383,
+  "macro_f1": 0.9385,
+  "weighted_f1": 0.9385,
+  "per_class": {
+    "0": {
+      "precision": 0.8599,
+      "recall": 0.9247,
+      "f1": 0.8911,
+      "support": 146
+    },
+    "1": {
+      "precision": 0.92,
+      "recall": 0.9324,
+      "f1": 0.9262,
+      "support": 148
+    },
+    "2": {
+      "precision": 0.8467,
+      "recall": 0.8639,
+      "f1": 0.8552,
+      "support": 147
+    },
+    "3": {
+      "precision": 0.9795,
+      "recall": 0.9662,
+      "f1": 0.9728,
+      "support": 148
+    },
+    "4": {
+      "precision": 1.0,
+      "recall": 0.9733,
+      "f1": 0.9865,
+      "support": 150
+    },
+    "5": {
+      "precision": 0.9675,
+      "recall": 1.0,
+      "f1": 0.9835,
+      "support": 149
+    },
+    "6": {
+      "precision": 0.9648,
+      "recall": 0.9195,
+      "f1": 0.9416,
+      "support": 149
+    },
+    "7": {
+      "precision": 0.8951,
+      "recall": 0.8649,
+      "f1": 0.8797,
+      "support": 148
+    },
+    "8": {
+      "precision": 0.9595,
+      "recall": 0.9595,
+      "f1": 0.9595,
+      "support": 148
+    },
+    "9": {
+      "precision": 1.0,
+      "recall": 0.9787,
+      "f1": 0.9892,
+      "support": 141
+    }
+  },
+  "confusion_matrix": [
+    [
+      135,
+      4,
+      4,
+      0,
+      0,
+      0,
+      1,
+      2,
+      0,
+      0
+    ],
+    [
+      3,
+      138,
+      5,
+      0,
+      0,
+      0,
+      0,
+      2,
+      0,
+      0
+    ],
+    [
+      7,
+      5,
+      127,
+      1,
+      0,
+      0,
+      0,
+      7,
+      0,
+      0
+    ],
+    [
+      2,
+      0,
+      0,
+      143,
+      0,
+      1,
+      0,
+      0,
+      2,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      146,
+      3,
+      0,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      149,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      3,
+      3,
+      2,
+      0,
+      0,
+      0,
+      137,
+      2,
+      2,
+      0
+    ],
+    [
+      3,
+      0,
+      11,
+      2,
+      0,
+      0,
+      4,
+      128,
+      0,
+      0
+    ],
+    [
+      4,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      142,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      2,
+      138
+    ]
+  ],
+  "classification_report": "              precision    recall  f1-score   support\n\n           0     0.8599    0.9247    0.8911       146\n           1     0.9200    0.9324    0.9262       148\n           2     0.8467    0.8639    0.8552       147\n           3     0.9795    0.9662    0.9728       148\n           4     1.0000    0.9733    0.9865       150\n           5     0.9675    1.0000    0.9835       149\n           6     0.9648    0.9195    0.9416       149\n           7     0.8951    0.8649    0.8797       148\n           8     0.9595    0.9595    0.9595       148\n           9     1.0000    0.9787    0.9892       141\n\n    accuracy                         0.9383      1474\n   macro avg     0.9393    0.9383    0.9385      1474\nweighted avg     0.9393    0.9383    0.9385      1474\n",
+  "error_analysis": {
+    "top_confusions": [
+      {
+        "true": 7,
+        "pred": 2,
+        "count": 11,
+        "rate_of_true_class": 0.0743
+      },
+      {
+        "true": 2,
+        "pred": 0,
+        "count": 7,
+        "rate_of_true_class": 0.0476
+      },
+      {
+        "true": 2,
+        "pred": 7,
+        "count": 7,
+        "rate_of_true_class": 0.0476
+      },
+      {
+        "true": 1,
+        "pred": 2,
+        "count": 5,
+        "rate_of_true_class": 0.0338
+      },
+      {
+        "true": 2,
+        "pred": 1,
+        "count": 5,
+        "rate_of_true_class": 0.034
+      },
+      {
+        "true": 8,
+        "pred": 0,
+        "count": 4,
+        "rate_of_true_class": 0.027
+      },
+      {
+        "true": 0,
+        "pred": 1,
+        "count": 4,
+        "rate_of_true_class": 0.0274
+      },
+      {
+        "true": 0,
+        "pred": 2,
+        "count": 4,
+        "rate_of_true_class": 0.0274
+      }
+    ],
+    "error_examples": [
+      {
+        "index": 16,
+        "true": 2,
+        "pred": 0,
+        "snippet": "From: kjetilk@stud.cs.uit.no (Kjetil Kolin) Subject: Protected Mode ? Organization: University of Tromsoe Lines: 6 Is there anybody who has (or can point me in the right direction)"
+      },
+      {
+        "index": 27,
+        "true": 7,
+        "pred": 2,
+        "snippet": "From: adler@netcom.com (Bruce Adler) Subject: Re: IBM-PC XT switch settings Organization: Netcom Online Communications Services (408-241-9760 login: guest) Lines: 26 In article <1q"
+      },
+      {
+        "index": 69,
+        "true": 3,
+        "pred": 8,
+        "snippet": "From: swdwan@napier.uwaterloo.ca (Donald Wan) Subject: just testing Organization: University of Waterloo Lines: 3 hello testing"
+      },
+      {
+        "index": 85,
+        "true": 1,
+        "pred": 0,
+        "snippet": "From: chrisa@hpwarr.hp.com ( Chris Almy) Subject: Re: WinFax files in ASCII format? Organization: none Reply-To: chrisa@hpwarr.hp.com ( Chris ) Lines: 11 WinFax Pro provides you wi"
+      },
+      {
+        "index": 99,
+        "true": 4,
+        "pred": 5,
+        "snippet": "From: rbp@netcom.com (Bob Pasker) Subject: Re: A Kinder, Gentler BMW Mailing List Organization: NETCOM On-line Communication Services (408 241-9760 guest) Lines: 10 joe, i'm sorry "
+      },
+      {
+        "index": 100,
+        "true": 4,
+        "pred": 5,
+        "snippet": "From: mjs@sys.uea.ac.uk (Mike Sixsmith) Subject: Cager antics on the football field... Organization: University of East Anglia Lines: 13 There was an article in one of the U.K. dai"
+      },
+      {
+        "index": 128,
+        "true": 7,
+        "pred": 6,
+        "snippet": "From: mycal@NetAcsys.com (Mycal) Subject: Need to find out number to a phone line Distribution: world Organization: ACSYS, Inc. Lines: 14 try comp.dcom - I was reading a thread a w"
+      },
+      {
+        "index": 175,
+        "true": 0,
+        "pred": 1,
+        "snippet": "From: Geoffrey_Hansen@mindlink.bc.ca (Geoffrey Hansen) Subject: Re: VESA on the Speedstar 24 Organization: MIND LINK! - British Columbia, Canada Lines: 12 Using the VMODE command, "
+      }
+    ]
+  },
+  "top_terms_by_class": {
+    "0": [
+      "graphics",
+      "of",
+      "and",
+      "for",
+      "edu",
+      "is",
+      "in",
+      "it"
+    ],
+    "1": [
+      "windows",
+      "edu",
+      "it",
+      "of",
+      "is",
+      "and",
+      "dos",
+      "file"
+    ],
+    "2": [
+      "and",
+      "it",
+      "is",
+      "of",
+      "drive",
+      "card",
+      "for",
+      "with"
+    ],
+    "3": [
+      "car",
+      "in",
+      "of",
+      "and",
+      "edu",
+      "it",
+      "com",
+      "is"
+    ],
+    "4": [
+      "bike",
+      "dod",
+      "and",
+      "com",
+      "in",
+      "you",
+      "of",
+      "it"
+    ],
+    "5": [
+      "edu",
+      "he",
+      "in",
+      "baseball",
+      "of",
+      "game",
+      "and",
+      "is"
+    ],
+    "6": [
+      "clipper",
+      "key",
+      "of",
+      "encryption",
+      "com",
+      "that",
+      "is",
+      "and"
+    ],
+    "7": [
+      "of",
+      "and",
+      "edu",
+      "is",
+      "in",
+      "for",
+      "it",
+      "that"
+    ],
+    "8": [
+      "of",
+      "is",
+      "and",
+      "in",
+      "edu",
+      "that",
+      "it",
+      "for"
+    ],
+    "9": [
+      "of",
+      "israel",
+      "in",
+      "and",
+      "that",
+      "israeli",
+      "edu",
+      "jews"
+    ]
+  },
+  "figures": {
+    "confusion_matrix": "C:\\Users\\haofeng\\WorkBuddy\\2026-10-14-11-14-23\\work\\qhf\\results\\figures\\fig5_confusion_matrix.png",
+    "per_class_f1": "C:\\Users\\haofeng\\WorkBuddy\\2026-10-14-11-14-23\\work\\qhf\\results\\figures\\fig7_per_class_f1.png"
+  },
+  "train_seconds": 5.822
+}

@@ -1,0 +1,62 @@
+{
+  "NB": {
+    "params": "alpha=0.1",
+    "cv_accuracy_mean": 0.9265,
+    "cv_accuracy_std": 0.0061,
+    "cv_macro_f1_mean": 0.9268,
+    "cv_macro_f1_std": 0.0061,
+    "folds": [
+      0.9237,
+      0.9262,
+      0.933,
+      0.9169,
+      0.9329
+    ],
+    "val_accuracy_single_split": 0.9254
+  },
+  "LR": {
+    "params": "C=100.0, solver=lbfgs",
+    "cv_accuracy_mean": 0.9318,
+    "cv_accuracy_std": 0.005,
+    "cv_macro_f1_mean": 0.9321,
+    "cv_macro_f1_std": 0.0048,
+    "folds": [
+      0.9313,
+      0.9262,
+      0.9406,
+      0.9279,
+      0.9329
+    ],
+    "val_accuracy_single_split": 0.9383
+  },
+  "SVM": {
+    "params": "kernel=linear, C=100.0",
+    "cv_accuracy_mean": 0.9299,
+    "cv_accuracy_std": 0.0056,
+    "cv_macro_f1_mean": 0.9303,
+    "cv_macro_f1_std": 0.0055,
+    "folds": [
+      0.9254,
+      0.9313,
+      0.9398,
+      0.9237,
+      0.9295
+    ],
+    "val_accuracy_single_split": 0.9328
+  },
+  "MLP": {
+    "params": "hidden_layer_sizes=(100,), alpha=0.1",
+    "cv_accuracy_mean": 0.935,
+    "cv_accuracy_std": 0.004,
+    "cv_macro_f1_mean": 0.9354,
+    "cv_macro_f1_std": 0.0039,
+    "folds": [
+      0.9321,
+      0.9288,
+      0.9398,
+      0.9381,
+      0.9363
+    ],
+    "val_accuracy_single_split": 0.9389
+  }
+}

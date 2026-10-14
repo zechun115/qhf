@@ -1,0 +1,44 @@
+{
+  "seed": 42,
+  "val_size": 0.2,
+  "clean_config": "C1_基础归一化",
+  "clean_config_detail": "不清洗",
+  "feature_config": "max_features=50000, ngram=1-gram, min_df=2, max_df=0.9, sublinear_tf=True, use_idf=True",
+  "selected_model": "LR",
+  "selected_params": "C=100.0, solver=lbfgs",
+  "validation_accuracy": 0.9383,
+  "validation_macro_f1": 0.9385,
+  "final": {
+    "model": "LR",
+    "model_full_name": "逻辑回归 (Logistic Regression)",
+    "params": "C=100.0, solver=lbfgs",
+    "params_raw": {
+      "C": 100.0,
+      "max_iter": 2000,
+      "solver": "lbfgs"
+    },
+    "n_final_train": 7368,
+    "n_test": 2457,
+    "n_features": 36204,
+    "train_seconds": 5.37,
+    "predict_seconds": 0.008,
+    "prediction_distribution": {
+      "0": 270,
+      "1": 243,
+      "2": 233,
+      "3": 243,
+      "4": 247,
+      "5": 249,
+      "6": 246,
+      "7": 248,
+      "8": 245,
+      "9": 233
+    },
+    "predictions_file": "C:\\Users\\haofeng\\WorkBuddy\\2026-10-14-11-14-23\\work\\qhf\\predictions.csv"
+  },
+  "diagnostics_summary": {
+    "accuracy": 0.9383,
+    "macro_f1": 0.9385,
+    "weighted_f1": 0.9385
+  }
+}

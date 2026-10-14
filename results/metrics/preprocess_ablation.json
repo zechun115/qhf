@@ -1,0 +1,54 @@
+{
+  "rows": [
+    {
+      "name": "C0_不清洗",
+      "description": "不清洗",
+      "clean_seconds": 1.76,
+      "avg_tokens": 248.6,
+      "accuracy": 0.9301,
+      "macro_f1": 0.9308
+    },
+    {
+      "name": "C1_基础归一化",
+      "description": "不清洗",
+      "clean_seconds": 1.78,
+      "avg_tokens": 307.8,
+      "accuracy": 0.9342,
+      "macro_f1": 0.9345
+    },
+    {
+      "name": "C2_去邮件头",
+      "description": "去邮件头 + 屏蔽邮箱/URL",
+      "clean_seconds": 3.07,
+      "avg_tokens": 275.7,
+      "accuracy": 0.9335,
+      "macro_f1": 0.934
+    },
+    {
+      "name": "C3_去邮件头+去引用",
+      "description": "去邮件头 + 去引用 + 去签名 + 屏蔽邮箱/URL",
+      "clean_seconds": 2.79,
+      "avg_tokens": 215.6,
+      "accuracy": 0.9104,
+      "macro_f1": 0.911
+    },
+    {
+      "name": "C4_完整清洗",
+      "description": "去邮件头 + 去引用 + 去签名 + 屏蔽邮箱/URL + 去停用词",
+      "clean_seconds": 4.33,
+      "avg_tokens": 105.5,
+      "accuracy": 0.9159,
+      "macro_f1": 0.9161
+    },
+    {
+      "name": "C5_完整清洗+词干化",
+      "description": "去邮件头 + 去引用 + 去签名 + 屏蔽邮箱/URL + 去停用词 + 词干化",
+      "clean_seconds": 9.09,
+      "avg_tokens": 105.5,
+      "accuracy": 0.9138,
+      "macro_f1": 0.914
+    }
+  ],
+  "best": "C1_基础归一化",
+  "figure": "C:\\Users\\haofeng\\WorkBuddy\\2026-10-14-11-14-23\\work\\qhf\\results\\figures\\fig2_preprocess_ablation.png"
+}
