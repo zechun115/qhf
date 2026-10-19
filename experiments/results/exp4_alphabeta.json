@@ -1,0 +1,126 @@
+{
+  "given": {
+    "minimax": {
+      "value": 5,
+      "nodes": 15,
+      "leaves": 8
+    },
+    "alpha_beta_natural": {
+      "value": 5,
+      "nodes": 14,
+      "leaves": 7,
+      "prunes": 2,
+      "cut": 1
+    }
+  },
+  "orders_given": {
+    "natural": {
+      "value": 5,
+      "nodes": 14,
+      "leaves": 7,
+      "prunes": 2,
+      "cut": 1
+    },
+    "best_first": {
+      "value": 5,
+      "nodes": 11,
+      "leaves": 5,
+      "prunes": 2,
+      "cut": 4
+    },
+    "worst_first": {
+      "value": 5,
+      "nodes": 15,
+      "leaves": 8,
+      "prunes": 0,
+      "cut": 0
+    },
+    "random": {
+      "value": 5,
+      "nodes": 11,
+      "leaves": 5,
+      "prunes": 2,
+      "cut": 4
+    }
+  },
+  "scaling": [
+    {
+      "depth": 2,
+      "leaves": 9,
+      "minimax": 13,
+      "ab_natural": 11.4,
+      "ab_best_first": 9,
+      "saving_natural": 0.123,
+      "saving_best": 0.308,
+      "mean_prunes": 1.2
+    },
+    {
+      "depth": 3,
+      "leaves": 27,
+      "minimax": 40,
+      "ab_natural": 30.8,
+      "ab_best_first": 20,
+      "saving_natural": 0.23,
+      "saving_best": 0.5,
+      "mean_prunes": 3.4
+    },
+    {
+      "depth": 4,
+      "leaves": 81,
+      "minimax": 121,
+      "ab_natural": 74.8,
+      "ab_best_first": 37,
+      "saving_natural": 0.382,
+      "saving_best": 0.694,
+      "mean_prunes": 13.8
+    },
+    {
+      "depth": 5,
+      "leaves": 243,
+      "minimax": 364,
+      "ab_natural": 191.7,
+      "ab_best_first": 72,
+      "saving_natural": 0.473,
+      "saving_best": 0.802,
+      "mean_prunes": 35.0
+    },
+    {
+      "depth": 6,
+      "leaves": 729,
+      "minimax": 1093,
+      "ab_natural": 410.4,
+      "ab_best_first": 125,
+      "saving_natural": 0.625,
+      "saving_best": 0.886,
+      "mean_prunes": 94.4
+    },
+    {
+      "depth": 7,
+      "leaves": 2187,
+      "minimax": 3280,
+      "ab_natural": 959.7,
+      "ab_best_first": 232,
+      "saving_natural": 0.707,
+      "saving_best": 0.929,
+      "mean_prunes": 217.3
+    }
+  ],
+  "orders_random": {
+    "natural": {
+      "nodes": 415.6,
+      "prunes": 96.1
+    },
+    "best_first": {
+      "nodes": 125,
+      "prunes": 46
+    },
+    "worst_first": {
+      "nodes": 992.3,
+      "prunes": 149.5
+    },
+    "random": {
+      "nodes": 412.2,
+      "prunes": 94.4
+    }
+  }
+}
