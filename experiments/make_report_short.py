@@ -202,7 +202,8 @@ r.story.append(Spacer(1, 0.16 * cm))
 
 link_tbl = Table([[Paragraph(
     f'<b>GitHub 仓库（全部代码与实验数据）：</b>'
-    f'<font color="#1F4E79"><u>{REPO}</u></font>', S["link"])]],
+    f'<font color="#1F4E79"><u>{REPO}</u></font>'
+    f'<font size="8.2" color="#5A5A5A">　→　homework2 分支</font>', S["link"])]],
     colWidths=[W], hAlign="CENTER")
 link_tbl.setStyle(TableStyle([
     ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#EDF3FA")),
@@ -438,7 +439,7 @@ r.p("后续可探索：把加权 A* 与实时约束结合（Anytime Repairing A*
     "置换表与迭代加深；把静态排序升级为上一轮迭代的最佳走法（PV 排序）。", style="body0")
 
 r.h1("附录  代码结构与复现方式")
-r.code("qhf/                      # GitHub: https://github.com/zechun115/qhf.git\n"
+r.code("qhf/  (homework2 分支)    # https://github.com/zechun115/qhf.git\n"
        "├── main.py               # 四题入口，自动与题面预期输出比对\n"
        "├── src/astar.py          # A*：4 种启发 + 3 种平局策略 + 加权 A*\n"
        "├── src/game_tree.py      # Minimax / Alpha-Beta + 顺序重排 + 访问统计\n"

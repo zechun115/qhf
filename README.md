@@ -1,6 +1,8 @@
 # 实验二：搜索算法（A\* 与 Alpha-Beta 剪枝）
 
-当代人工智能实验课 · 实验二 · GitHub 仓库：**https://github.com/zechun115/qhf.git**
+当代人工智能实验课 · 实验二
+
+GitHub 仓库：**https://github.com/zechun115/qhf.git**（本实验全部代码位于 **homework2** 分支）
 
 ## 一、环境与运行方式
 
