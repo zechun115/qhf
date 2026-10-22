@@ -1,0 +1,10 @@
+<!DOCTYPE html><html><body><script>
+  // 开发辅助页：把 URL 里的 token 写入 localStorage 后跳到目标页（同一进程内完成，供自动化截图使用）
+  var p = new URLSearchParams(location.search);
+  if (p.get('t')) {
+    localStorage.setItem('qb_token', p.get('t'));
+    localStorage.setItem('qb_user', JSON.stringify({ username: p.get('u') || 'demo' }));
+  }
+  var next = p.get('next');
+  if (next && next.charAt(0) === '/') location.replace(next);
+</script></body></html>

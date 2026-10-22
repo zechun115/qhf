@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>登录 · 问卷系统</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="center-page">
+    <div class="card auth-card">
+      <h1>问卷系统</h1>
+      <p class="sub">基于 MongoDB 的在线问卷平台</p>
+
+      <div class="tabs">
+        <button id="tab-login" class="active" type="button">登录</button>
+        <button id="tab-register" type="button">注册</button>
+      </div>
+
+      <form id="form">
+        <label class="field">
+          <span>用户名（3~32 个字符）</span>
+          <input type="text" id="username" autocomplete="username" />
+        </label>
+        <label class="field">
+          <span>密码（6~64 个字符）</span>
+          <input type="password" id="password" autocomplete="current-password" />
+        </label>
+        <div class="err hidden" id="msg"></div>
+        <button class="primary" style="width:100%;margin-top:8px" type="submit" id="submit">登录</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    const { Auth, api, query, esc } = App;
+    let mode = 'login';
+    const msg = document.getElementById('msg');
+    const submitBtn = document.getElementById('submit');
+
+    function setMode(next) {
+      mode = next;
+      document.getElementById('tab-login').classList.toggle('active', next === 'login');
+      document.getElementById('tab-register').classList.toggle('active', next === 'register');
+      submitBtn.textContent = next === 'login' ? '登录' : '注册并登录';
+      msg.classList.add('hidden');
+    }
+
+    document.getElementById('tab-login').onclick = () => setMode('login');
+    document.getElementById('tab-register').onclick = () => setMode('register');
+
+    document.getElementById('form').onsubmit = async (e) => {
+      e.preventDefault();
+      msg.classList.add('hidden');
+      submitBtn.disabled = true;
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      try {
+        const data = await api('/auth/' + mode, { method: 'POST', body: { username, password }, auth: false });
+        Auth.save(data.token, data.user);
+        const next = query('next');
+        location.href = next ? decodeURIComponent(next) : '/dashboard.html';
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

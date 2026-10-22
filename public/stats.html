@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>统计结果</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">问卷系统</div>
+    <div class="links">
+      <a href="/dashboard.html">我的问卷</a>
+      <a href="#" id="logout">退出</a>
+    </div>
+  </div>
+
+  <div class="wrap wide">
+    <div class="card">
+      <div class="between">
+        <div>
+          <h2 id="title">加载中…</h2>
+          <p class="sub" id="meta"></p>
+        </div>
+        <div class="row">
+          <a id="edit-link"><button class="small">返回编辑</button></a>
+          <button class="small" id="export-btn">导出答卷 CSV</button>
+          <button class="small" id="refresh">刷新</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="card" style="margin:0;padding:12px 18px;min-width:130px">
+          <div class="small muted">总答卷数</div>
+          <div id="stat-total" style="font-size:22px;font-weight:600">0</div>
+        </div>
+        <div class="card" style="margin:0;padding:12px 18px;min-width:130px">
+          <div class="small muted">匿名答卷</div>
+          <div id="stat-anon" style="font-size:22px;font-weight:600">0</div>
+        </div>
+        <div class="card" style="margin:0;padding:12px 18px;min-width:130px">
+          <div class="small muted">登录答卷</div>
+          <div id="stat-login" style="font-size:22px;font-weight:600">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="stats"><p class="muted">加载中…</p></div>
+
+    <div class="card">
+      <div class="between">
+        <h2>答卷明细</h2>
+        <button class="small" id="load-responses">加载明细</button>
+      </div>
+      <div id="responses" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    const { Auth, api, esc, fmtTime } = App;
+    if (!Auth.requireLogin()) throw new Error('redirect');
+
+    const id = App.query('id');
+    let data = null;
+
+    document.getElementById('logout').onclick = (e) => {
+      e.preventDefault();
+      Auth.clear();
+      location.href = '/index.html';
+    };
+    document.getElementById('edit-link').href = '/edit.html?id=' + id;
+
+    function bars(question) {
+      const isRating = question.type === 'rating';
+      return question.options
+        .map(
+          (o) => `
+        <div class="bar-row">
+          <div class="small">${isRating ? '★'.repeat(Number(o.key)) + ' ' + esc(o.label) : esc(o.key + '. ' + o.label)}</div>
+          <div class="bar"><i style="width:${o.percent}%"></i></div>
+          <div class="small muted">${o.count} 人 · ${o.percent}%</div>
+        </div>`
+        )
+        .join('');
+    }
+
+    function renderStats() {
+      document.getElementById('title').textContent = data.survey.title;
+      document.getElementById('stat-total').textContent = data.total_responses;
+      document.getElementById('stat-anon').textContent = data.anonymous_responses;
+      document.getElementById('stat-login').textContent = data.logged_in_responses;
+      document.getElementById('meta').textContent =
+        '共 ' + data.questions.length + ' 题 · 统计基于已提交的 ' + data.total_responses + ' 份答卷';
+
+      const box = document.getElementById('stats');
+      if (!data.total_responses) {
+        box.innerHTML = '<div class="card"><p class="muted">还没有答卷，把填写链接发给别人试试。</p></div>';
+        return;
+      }
+
+      box.innerHTML = data.questions
+        .map((q) => {
+          let inner = '';
+          if (['single', 'multiple', 'dropdown', 'rating'].includes(q.type)) {
+            inner = bars(q);
+          } else if (q.type === 'text') {
+            inner =
+              '<p class="small muted">共 ' + q.text_count + ' 条，平均 ' + q.avg_length + ' 字</p>' +
+              '<div style="max-height:220px;overflow:auto">' +
+              q.texts.map((t) => '<div class="small" style="padding:5px 0;border-bottom:1px dashed var(--line)">' + esc(t) + '</div>').join('') +
+              (q.texts_truncated ? '<p class="small muted">仅显示前 100 条</p>' : '') +
+              '</div>';
+          } else if (q.type === 'date') {
+            inner =
+              '<p class="small muted">共 ' + q.date_count + ' 份作答，出现的日期（新→旧）：</p>' +
+              '<div class="row" style="flex-wrap:wrap;gap:6px">' +
+              (q.dates || []).map((d) => '<span class="tag mono">' + esc(d) + '</span>').join('') +
+              '</div>' +
+              (q.dates_truncated ? '<p class="small muted">仅显示最近 50 个日期</p>' : '');
+          } else {
+            inner =
+              '<div class="row"><span>作答 ' + q.number_count + ' 份</span>' +
+              '<span>平均 <strong>' + q.avg + '</strong></span>' +
+              '<span>最小 ' + q.min + '</span><span>最大 ' + q.max + '</span></div>';
+          }
+          return `
+          <div class="card">
+            <div class="between" style="margin-bottom:10px">
+              <div><span class="tag">第 ${q.order} 题</span> <strong>${esc(q.title)}</strong></div>
+              <span class="small muted">作答 ${q.answered} 人 · 作答率 ${q.response_rate}%</span>
+            </div>
+            ${inner}
+          </div>`;
+        })
+        .join('');
+    }
+
+    async function load() {
+      try {
+        data = await api('/surveys/' + id + '/stats');
+        renderStats();
+      } catch (err) {
+        document.getElementById('stats').innerHTML = '<div class="card"><p class="err">' + esc(err.message) + '</p></div>';
+      }
+    }
+
+    document.getElementById('refresh').onclick = load;
+
+    /** 与列表页相同的导出逻辑：下载链接无法带令牌，用 fetch + blob */
+    document.getElementById('export-btn').onclick = async () => {
+      try {
+        const res = await fetch('/api/surveys/' + id + '/responses/export', {
+          headers: { Authorization: 'Bearer ' + Auth.token() },
+        });
+        if (!res.ok) throw new Error('导出失败（HTTP ' + res.status + '）');
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '答卷-' + id.slice(-6) + '.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    document.getElementById('load-responses').onclick = async () => {
+      try {
+        const res = await api('/surveys/' + id + '/responses?size=20');
+        const box = document.getElementById('responses');
+        if (!res.items.length) {
+          box.innerHTML = '<p class="muted">暂无答卷</p>';
+          return;
+        }
+        box.innerHTML = res.items
+          .map(
+            (r) => `
+          <div class="list-item" style="display:block">
+            <div class="small muted">${fmtTime(r.submitted_at)} · ${r.anonymous ? '匿名' : '用户 ' + esc(r.respondent_id)} · <span class="mono">${r.id}</span></div>
+            <div style="margin-top:6px">
+              ${r.answers
+                .map(
+                  (a) =>
+                    '<div class="small">第 ' + a.question_order + ' 题 ' + esc(a.question_title) + '：<strong>' + esc(a.display || '（未作答）') + '</strong></div>'
+                )
+                .join('')}
+            </div>
+          </div>`
+          )
+          .join('');
+      } catch (err) {
+        document.getElementById('responses').innerHTML = '<p class="err">' + esc(err.message) + '</p>';
+      }
+    };
+
+    load();
+  </script>
+</body>
+</html>

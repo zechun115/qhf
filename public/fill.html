@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>填写问卷</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" id="head">
+      <h2 id="title">加载中…</h2>
+      <p class="sub" id="desc"></p>
+      <p class="small muted" id="hint"></p>
+    </div>
+
+    <div class="card" id="body">
+      <p class="muted">加载中…</p>
+    </div>
+  </div>
+
+  <!-- 与后端共用同一套校验 / 跳转规则引擎 -->
+  <script src="/core/validation.js"></script>
+  <script src="/core/jump.js"></script>
+  <script src="/app.js"></script>
+  <script>
+    const { Auth, api, esc, toast } = App;
+    const code = App.query('code');
+
+    let survey = null;
+    let questions = [];
+    let answers = {}; // qid -> { option_keys } | { text } | { number }
+    let currentId = null;
+    let step = 1;
+
+    const typeLabel = {
+      single: '单选题', multiple: '多选题', text: '文本填空', number: '数字填空',
+      dropdown: '下拉选择', rating: '评分题', date: '日期题',
+    };
+
+    function answerFor(q) {
+      return answers[q.id] || {};
+    }
+
+    function computePath() {
+      // 与服务端完全相同的函数：前端即时跳转，服务端提交时再权威重算一遍
+      return QBJump.computePath(questions, answers).path;
+    }
+
+    function renderHead() {
+      document.getElementById('title').textContent = survey.title;
+      document.getElementById('desc').textContent = survey.description || '';
+      const bits = [];
+      bits.push('共 ' + survey.question_count + ' 题');
+      if (survey.deadline) bits.push('截止 ' + new Date(survey.deadline).toLocaleString());
+      if (survey.allow_anonymous) bits.push('可匿名填写');
+      bits.push('已登录：' + (Auth.user() ? Auth.user().username : '否'));
+      document.getElementById('hint').textContent = bits.join(' · ');
+    }
+
+    function renderQuestion() {
+      const q = questions.find((x) => x.id === currentId);
+      const path = computePath();
+      const idx = path.findIndex((x) => x.id === currentId);
+      const total = Math.max(path.length, idx + 1);
+      const body = document.getElementById('body');
+
+      let input = '';
+      if (q.type === 'dropdown') {
+        input =
+          '<select id="q-input" class="select"><option value="">请选择…</option>' +
+          q.options
+            .map(
+              (o) =>
+                `<option value="${esc(o.key)}" ${answerFor(q).option_keys && answerFor(q).option_keys[0] === o.key ? 'selected' : ''}>${esc(o.key + '. ' + o.label)}</option>`
+            )
+            .join('') +
+          '</select>';
+      } else if (q.type === 'single') {
+        input = q.options
+          .map(
+            (o) => `
+          <label class="opt">
+            <input type="radio" name="q" value="${esc(o.key)}" ${answerFor(q).option_keys && answerFor(q).option_keys[0] === o.key ? 'checked' : ''} />
+            <span>${esc(o.key + '. ' + o.label)}</span>
+          </label>`
+          )
+          .join('');
+      } else if (q.type === 'rating') {
+        const chosen = answerFor(q).option_keys && answerFor(q).option_keys[0];
+        input =
+          '<div class="stars">' +
+          q.options
+            .map(
+              (o) => `
+          <label class="star ${chosen === o.key ? 'on' : ''}" data-key="${esc(o.key)}">
+            <input type="radio" name="q" value="${esc(o.key)}" ${chosen === o.key ? 'checked' : ''} />
+            <span class="star-icon">★</span><i>${esc(o.key)} 星</i>
+          </label>`
+            )
+            .join('') +
+          '</div><p class="small muted" style="margin:8px 0 0">点击星级即可选择</p>';
+      } else if (q.type === 'date') {
+        input = '<input type="date" id="q-input" value="' + esc(answerFor(q).date || '') + '" />';
+      } else if (q.type === 'multiple') {
+        const chosen = answerFor(q).option_keys || [];
+        const c = q.constraints || {};
+        input = q.options
+          .map(
+            (o) => `
+          <label class="opt">
+            <input type="checkbox" name="q" value="${esc(o.key)}" ${chosen.includes(o.key) ? 'checked' : ''} />
+            <span>${esc(o.key + '. ' + o.label)}</span>
+          </label>`
+          )
+          .join('');
+        if (c.min_choice != null || c.max_choice != null) {
+          input += '<p class="small muted" style="margin:8px 0 0">' +
+            (c.min_choice != null ? '至少选 ' + c.min_choice + ' 项' : '') +
+            (c.min_choice != null && c.max_choice != null ? '，' : '') +
+            (c.max_choice != null ? '最多选 ' + c.max_choice + ' 项' : '') + '</p>';
+        }
+      } else if (q.type === 'text') {
+        const c = q.constraints || {};
+        input = '<textarea id="q-input" placeholder="请输入">' + esc(answerFor(q).text || '') + '</textarea>';
+        if (c.min_length != null || c.max_length != null) {
+          input += '<p class="small muted" style="margin:6px 0 0">' +
+            (c.min_length != null ? '最少 ' + c.min_length + ' 字' : '') +
+            (c.min_length != null && c.max_length != null ? '，' : '') +
+            (c.max_length != null ? '最多 ' + c.max_length + ' 字' : '') + '</p>';
+        }
+      } else {
+        const c = q.constraints || {};
+        input = '<input type="number" id="q-input" value="' + (answerFor(q).number != null ? answerFor(q).number : '') + '" />';
+        const tips = [];
+        if (c.min != null) tips.push('不小于 ' + c.min);
+        if (c.max != null) tips.push('不大于 ' + c.max);
+        if (c.integer) tips.push('必须是整数');
+        if (tips.length) input += '<p class="small muted" style="margin:6px 0 0">' + esc(tips.join('，')) + '</p>';
+      }
+
+      const isLast = idx >= path.length - 1;
+      body.innerHTML = `
+        <div class="progress"><i style="width:${Math.round(((idx + 1) / total) * 100)}%"></i></div>
+        <p class="small muted" style="margin:0 0 8px">第 ${step} 步 · 第 ${q.order} 题 · ${typeLabel[q.type]}${q.required ? ' · 必答' : ''}</p>
+        <h2 style="font-size:16px;margin:0 0 12px">${esc(q.title)}</h2>
+        <div id="opts">${input}</div>
+        <div class="err hidden" id="err"></div>
+        <div class="row" style="margin-top:16px">
+          <button class="primary" id="next">${isLast ? '提交答卷' : '下一题'}</button>
+          <span class="small muted" id="skip-tip"></span>
+        </div>`;
+
+      const optBox = document.getElementById('opts');
+      // 单选 / 多选 / 下拉 / 评分 / 日期监听 change；文本、数字监听 input，边输入边记录，避免不点空白处就丢答案
+      const eventName = q.type === 'text' || q.type === 'number' ? 'input' : 'change';
+      const bindChoice = (inputEl) => {
+        if (q.type === 'single' || q.type === 'dropdown' || q.type === 'rating') {
+          answers[q.id] = { option_keys: [inputEl.value] };
+          // 评分题同步星级高亮
+          if (q.type === 'rating') {
+            optBox.querySelectorAll('.star').forEach((el) => el.classList.toggle('on', el.dataset.key === inputEl.value));
+          }
+        } else if (q.type === 'multiple') {
+          const picked = Array.from(optBox.querySelectorAll('input:checked')).map((n) => n.value);
+          answers[q.id] = { option_keys: picked };
+        } else if (q.type === 'number') {
+          answers[q.id] = inputEl.value === '' ? {} : { number: Number(inputEl.value) };
+        } else if (q.type === 'date') {
+          answers[q.id] = inputEl.value === '' ? {} : { date: inputEl.value };
+        } else {
+          answers[q.id] = inputEl.value === '' ? {} : { text: inputEl.value };
+        }
+      };
+      optBox.querySelectorAll('input, textarea, select').forEach((inputEl) => {
+        inputEl.addEventListener(eventName, () => bindChoice(inputEl));
+      });
+
+      document.getElementById('next').onclick = onNext;
+    }
+
+    async function onNext() {
+      const q = questions.find((x) => x.id === currentId);
+      const errBox = document.getElementById('err');
+      errBox.classList.add('hidden');
+
+      // 前端先做一次同样的校验，让用户马上看到问题
+      const check = QBValidation.validateAnswer(q, answers[q.id]);
+      if (!check.ok) {
+        errBox.textContent = check.errors.join('\n');
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      const path = computePath();
+      const idx = path.findIndex((x) => x.id === currentId);
+      if (idx < path.length - 1) {
+        currentId = path[idx + 1].id;
+        step += 1;
+        renderQuestion();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // 已是路径上的最后一题 → 提交
+      const btn = document.getElementById('next');
+      btn.disabled = true;
+      btn.textContent = '提交中…';
+      const payload = Object.keys(answers).map((qid) => ({ question_id: qid, ...answers[qid] }));
+      try {
+        const res = await api('/fill/' + code + '/submit', { method: 'POST', body: { answers: payload } });
+        document.getElementById('head').innerHTML =
+          '<h2>提交成功</h2><p class="sub">' + esc(res.submit_message || '感谢你的参与，答卷已保存。') + '</p>';
+        document.getElementById('body').innerHTML =
+          '<p class="ok">共作答 ' + res.answered_count + ' 题，作答路径：第 ' + res.path.join(' → ') + ' 题</p>' +
+          (res.ended_early ? '<p class="small muted">本次作答按问卷规则提前结束。</p>' : '') +
+          '<p class="small muted">答卷编号：<span class="mono">' + res.response_id + '</span></p>';
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '提交答卷';
+        const details = err.data && err.data.error && err.data.error.details;
+        if (details && details.errors) {
+          errBox.textContent = details.errors
+            .map((e) => '第 ' + e.order + ' 题：' + e.messages.join('；'))
+            .join('\n');
+        } else {
+          errBox.textContent = err.message;
+        }
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    async function load() {
+      if (!code) {
+        document.getElementById('body').innerHTML = '<p class="err">缺少问卷短码，请通过完整链接访问。</p>';
+        return;
+      }
+      try {
+        const data = await api('/fill/' + code, { auth: Boolean(Auth.token()) });
+        survey = data.survey;
+        questions = data.questions;
+
+        if (data.requires_login) {
+          location.href = '/index.html?next=' + encodeURIComponent('/fill.html?code=' + code);
+          return;
+        }
+        if (data.already_submitted) {
+          document.getElementById('head').innerHTML = '<h2>' + esc(survey.title) + '</h2>';
+          document.getElementById('body').innerHTML = '<p class="err">你已提交过这份问卷，且该问卷不允许重复填写。</p>';
+          return;
+        }
+
+        renderHead();
+        currentId = computePath()[0].id;
+        renderQuestion();
+      } catch (err) {
+        document.getElementById('head').innerHTML = '<h2>无法打开问卷</h2>';
+        document.getElementById('body').innerHTML = '<p class="err">' + esc(err.message) + '</p>';
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

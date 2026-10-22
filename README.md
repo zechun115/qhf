@@ -1,2 +1,147 @@
-# qhf
-课程作业
+# 基于 MongoDB 的在线问卷系统（第一阶段）
+
+课程大作业第一阶段交付物：一个可运行的简化版问卷系统，支持注册登录、创建问卷、七种题型（单选 / 多选 / 下拉选择 / 评分 / 文本 / 数字 / 日期）、按规则跳转、答案校验、提交保存、答卷导出与统计结果查看。数据全部存放在 MongoDB 中，后端使用 Node.js + Express + Mongoose，前端为原生 HTML/JS 的简单页面。
+
+## 1. 技术栈
+
+| 层 | 选型 | 说明 |
+| --- | --- | --- |
+| 数据库 | MongoDB 6/7/8 | 唯一的数据存储，无任何关系型数据库 |
+| 后端 | Node.js 18+ / Express 4 | 分层：routes（接口）/ core（规则引擎）/ models（数据模型） |
+| ODM | Mongoose 8 | 只用于模型定义与校验，统计使用原生聚合管道 |
+| 认证 | JWT（jsonwebtoken）+ bcryptjs | 无状态登录，密码只存 bcrypt 哈希 |
+| 前端 | 原生 HTML + CSS + JavaScript | 不使用框架，页面直接放在 `public/` 下由 Express 托管 |
+| 测试 | node:test + supertest | 69 个自动化用例，连接真实 MongoDB 实例 |
+
+前端与后端**共用同一套规则引擎**：`src/core/validation.js`、`src/core/jump.js` 采用 UMD 写法，服务端 `require()` 加载，浏览器通过 `/core/*.js` 加载，因此「跳转规则」「校验规则」只有一份实现，不会出现前后端判断不一致。
+
+## 2. 目录结构
+
+```
+questionnaire-system/
+├── src/
+│   ├── server.js              # 启动入口：连库 + 监听端口
+│   ├── app.js                 # Express 应用装配、静态资源、统一错误处理
+│   ├── db.js                  # MongoDB 连接
+│   ├── models/                # 4 个集合的模型定义
+│   │   ├── User.js
+│   │   ├── Survey.js
+│   │   ├── Question.js
+│   │   └── Response.js
+│   ├── core/                  # 与框架无关的规则引擎（前后端共用）
+│   │   ├── validation.js      # 答案校验
+│   │   ├── jump.js            # 跳转路径计算
+│   │   └── questionRules.js   # 题目结构/跳转规则的合法性校验
+│   ├── routes/
+│   │   ├── auth.js            # 注册 / 登录 / 当前用户
+│   │   ├── surveys.js         # 问卷增删改查、发布、关闭
+│   │   ├── questions.js       # 题目增删改、排序
+│   │   ├── fill.js            # 填写页数据 + 提交答卷
+│   │   └── stats.js           # 整卷统计、单题统计、答卷明细
+│   ├── middleware/auth.js     # JWT 校验（必需 / 可选）
+│   └── utils/errors.js        # 统一业务异常
+├── public/                    # 前端页面
+│   ├── index.html             # 登录 / 注册
+│   ├── dashboard.html         # 我的问卷列表
+│   ├── edit.html              # 问卷编辑（题目、约束、跳转规则）
+│   ├── fill.html              # 填写页（逐题、按规则跳转）
+│   ├── stats.html             # 统计结果
+│   ├── app.js / style.css     # 公共脚本与样式
+├── tests/                     # 自动化测试
+├── scripts/seed.js            # 演示数据
+└── docs/                      # 设计文档、测试用例、AI 使用日志
+```
+
+## 3. 运行方式
+
+### 3.1 前置条件
+
+- Node.js ≥ 18
+- MongoDB 已安装并可以启动（本项目在 MongoDB 8.3 上验证）
+
+### 3.2 启动数据库
+
+```bash
+# 任选一种
+mongod --dbpath <你的数据目录> --port 27017 --bind_ip 127.0.0.1
+# 或使用 Docker
+docker run -d -p 27017:27017 --name qmongo mongo:7
+```
+
+### 3.3 启动应用
+
+```bash
+npm install
+npm run seed     # 可选：写入演示账号与示例问卷（11 题、24 份答卷、三类跳转规则）
+npm start        # 默认 http://127.0.0.1:3000
+```
+
+打开 <http://127.0.0.1:3000>，使用演示账号 `demo / 123456` 登录，或自行注册。
+
+演示问卷填写链接：<http://127.0.0.1:3000/fill.html?code=demo2026>。示例问卷为「本科生课程学习体验调查」，覆盖全部七种题型与三类跳转规则（学生跳过教师题、评分低于 6 分追问原因、选「其他」提前结束），24 份演示答卷覆盖所有作答路径，统计页可直接看到跳转对每题作答率的影响。
+
+### 3.4 环境变量
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `PORT` | `3000` | HTTP 端口 |
+| `MONGO_URI` | `mongodb://127.0.0.1:27017/questionnaire` | 数据库连接串 |
+| `JWT_SECRET` | `dev-secret-change-me` | 生产环境必须替换 |
+| `PUBLIC_BASE_URL` | 请求的 host | 生成问卷短链时使用的前缀 |
+
+### 3.5 测试
+
+```bash
+npm test
+```
+
+测试会连接 `localhost:27017`，为每个测试文件创建独立数据库（如 `qb_test_fill`），跑完自动删除，不会污染业务库。若数据库在别的地址：
+
+```bash
+MONGO_TEST_URI=mongodb://127.0.0.1:27027 npm test
+```
+
+当前结果：**69 个用例全部通过**（规则引擎 19 + 账号 6 + 问卷管理 13 + 填写跳转 13 + 统计 7 + 新增常用功能 11）。
+
+## 4. 功能与需求对应
+
+| 需求 | 实现情况 |
+| --- | --- |
+| 注册 / 登录 / 只能看自己的问卷 | JWT 认证；`surveys.owner_id` 过滤；越权访问返回 403 |
+| 创建问卷、标题、说明、匿名开关 | `POST /api/surveys`；`allow_anonymous` 控制是否允许未登录填写 |
+| 查看列表、发布、关闭、截止时间 | `status` 状态机 draft→published→closed；deadline 独立判断 |
+| 每份问卷一个可访问链接 | `share_code` 8 位短码，`/fill.html?code=xxxx` |
+| 单选题（选项、必答） | `type=single` |
+| 多选题（限制最少/最多选择数） | `type=multiple` + `min_choice/max_choice` |
+| 文本填空（最少/最多字数） | `type=text` + `min_length/max_length`（按 Unicode 码点计） |
+| 数字填空（最小/最大/是否整数） | `type=number` + `min/max/integer` |
+| 下拉选择（对标腾讯文档收集表） | `type=dropdown`，填写端渲染为下拉框，其余行为与单选一致 |
+| 评分题（分值量表） | `type=rating`，系统自动生成 1~5 星选项，统计与跳转按选项处理 |
+| 日期 | `type=date`，服务端校验 YYYY-MM-DD 且拒绝不存在的日期（如 2026-02-30） |
+| 复制问卷（生成副本） | `POST /api/surveys/:id/duplicate`，复制题目与跳转规则并重映射目标 id |
+| 答卷导出 | `GET /api/surveys/:id/responses/export` 导出 CSV（UTF-8 BOM，Excel 直接打开） |
+| 提交后提示语 | `surveys.submit_message`，发布后仍可修改 |
+| 扫码填写 | `GET /api/surveys/:id/qrcode` 生成填写页二维码（PNG data URL），列表页弹窗展示，手机扫码直接填写 |
+| 按单选 / 多选 / 下拉 / 评分 / 数字结果跳转 | `question.jump_rules` 存规则，`core/jump.js` 解释执行 |
+| 跳转不写死在程序里 | 规则以文档形式保存在数据库中，编辑页可视化配置 |
+| 填写时校验、错误提示、提交保存 | 前端即时校验 + 后端权威校验（同一份引擎） |
+| 多人同时填写、匿名、允许重复 | 无共享可变状态；`allow_anonymous`、`allow_multiple` 控制 |
+| 统计：单选人数、多选次数、填空内容、数字均值 | `stats.js` 聚合管道 + 单题统计接口 |
+| 不允许使用关系数据库 / 现成问卷框架 | 仅 MongoDB + 自研实现 |
+
+## 5. 文档索引
+
+| 文档 | 内容 |
+| --- | --- |
+| [docs/database-design.md](docs/database-design.md) | 集合结构、字段含义、索引、设计取舍、与关系模型的对比 |
+| [docs/api.md](docs/api.md) | 全部 HTTP 接口、参数、返回、错误码 |
+| [docs/key-logic.md](docs/key-logic.md) | 跳转引擎、校验引擎、题目排序、统计聚合的关键实现 |
+| [docs/test-cases.md](docs/test-cases.md) | 测试用例表：步骤、输入、预期、实际结果 |
+| [docs/ai-usage-log.md](docs/ai-usage-log.md) | AI 使用日志与使用说明 |
+
+## 6. 已知限制
+
+- 同一份问卷的题目只允许在**草稿**状态下修改。问卷一旦发布，题目结构冻结，只允许改截止时间。这样做是为了保证历史答卷始终能被正确解释（题目删改会让旧答卷的题号、选项失去意义）。
+- 文本题统计最多返回前 100 条内容，数字题最多返回前 100 个值，避免响应体过大。
+- 单份问卷的题目数建议不超过 200 题、单题文本长度做上限约束，以保证「一份答卷一个文档」不逼近 16MB 文档上限。
+- 短链使用 8 位随机码，未做自定义别名与访问口令。
