@@ -61,6 +61,7 @@
         <span class="muted small" id="total"></span>
       </div>
       <div id="list"><p class="muted">加载中…</p></div>
+      <div id="pager" class="row" style="justify-content:center;margin-top:14px"></div>
     </div>
   </div>
 
@@ -80,7 +81,7 @@
 
   <script src="/app.js"></script>
   <script>
-    const { Auth, api, esc, fmtTime, statusTag } = App;
+    const { Auth, api, esc, toast, fmtTime, statusTag } = App;
     if (!Auth.requireLogin()) throw new Error('redirect');
     document.getElementById('who').textContent = (Auth.user() || {}).username || '';
 
@@ -114,14 +115,26 @@
       }
     };
 
+    let page = 1;
+    const PAGE_SIZE = 10;
+
     async function load() {
       const status = document.getElementById('status-filter').value;
       const box = document.getElementById('list');
+      const pager = document.getElementById('pager');
       try {
-        const data = await api('/surveys?size=50' + (status ? '&status=' + status : ''));
-        document.getElementById('total').textContent = '共 ' + data.total + ' 份';
+        const data = await api('/surveys?page=' + page + '&size=' + PAGE_SIZE + (status ? '&status=' + status : ''));
+        const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
+        // 删到当前页没数据时自动回退一页，避免停在空白页
+        if (page > totalPages) {
+          page = totalPages;
+          return load();
+        }
+        document.getElementById('total').textContent =
+          '共 ' + data.total + ' 份' + (totalPages > 1 ? ' · 第 ' + page + '/' + totalPages + ' 页' : '');
         if (!data.items.length) {
-          box.innerHTML = '<p class="muted">还没有问卷，点右上角「新建问卷」开始。</p>';
+          pager.innerHTML = '';
+          box.innerHTML = '<p class="muted">' + (status ? '当前筛选条件下没有问卷。' : '还没有问卷，点右上角「新建问卷」开始。') + '</p>';
           return;
         }
         box.innerHTML = data.items
@@ -148,6 +161,23 @@
           )
           .join('');
 
+        pager.innerHTML =
+          '<button class="small" id="page-prev" ' + (page <= 1 ? 'disabled' : '') + '>上一页</button>' +
+          '<span class="small muted" style="padding:0 8px">第 ' + page + ' / ' + totalPages + ' 页</span>' +
+          '<button class="small" id="page-next" ' + (page >= totalPages ? 'disabled' : '') + '>下一页</button>';
+        document.getElementById('page-prev').onclick = () => {
+          if (page > 1) {
+            page -= 1;
+            load();
+          }
+        };
+        document.getElementById('page-next').onclick = () => {
+          if (page < totalPages) {
+            page += 1;
+            load();
+          }
+        };
+
         box.querySelectorAll('[data-act="copy"]').forEach((btn) => {
           btn.onclick = () => App.copy(btn.dataset.url);
         });
@@ -157,6 +187,7 @@
             try {
               const res = await api('/surveys/' + btn.dataset.id + '/duplicate', { method: 'POST' });
               toast('已创建副本，共复制 ' + res.copied_questions + ' 道题');
+              page = 1;
               load();
             } catch (err) {
               alert(err.message);
@@ -210,7 +241,10 @@
       }
     }
 
-    document.getElementById('status-filter').onchange = load;
+    document.getElementById('status-filter').onchange = () => {
+      page = 1;
+      load();
+    };
     load();
   </script>
 </body>

@@ -50,6 +50,18 @@
     document.getElementById('tab-login').onclick = () => setMode('login');
     document.getElementById('tab-register').onclick = () => setMode('register');
 
+    /**
+     * 登录后要跳回的站内路径。
+     * 1) URLSearchParams 取出来的值已经是解码后的，不能再 decodeURIComponent 一次，
+     *    否则路径里带 % 时会被二次解码甚至抛异常；
+     * 2) 只接受以单个 / 开头的站内路径，挡掉 //evil.com 这类站外跳转。
+     */
+    function safeNext(v) {
+      if (typeof v !== 'string' || !v) return null;
+      if (v.charAt(0) !== '/' || v.charAt(1) === '/') return null;
+      return v;
+    }
+
     document.getElementById('form').onsubmit = async (e) => {
       e.preventDefault();
       msg.classList.add('hidden');
@@ -59,8 +71,8 @@
       try {
         const data = await api('/auth/' + mode, { method: 'POST', body: { username, password }, auth: false });
         Auth.save(data.token, data.user);
-        const next = query('next');
-        location.href = next ? decodeURIComponent(next) : '/dashboard.html';
+        const next = safeNext(query('next'));
+        location.href = next || '/dashboard.html';
       } catch (err) {
         msg.textContent = err.message;
         msg.classList.remove('hidden');

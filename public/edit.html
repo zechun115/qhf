@@ -241,8 +241,18 @@
       ['meta-title', 'meta-desc', 'meta-anon', 'meta-multi'].forEach((k) => {
         document.getElementById(k).disabled = locked;
       });
-      // 提示语不影响答卷结构，发布后仍可修改
+      // 提示语不影响答卷结构，发布后仍可修改；问卷关闭后后端不接受任何修改，按钮一并禁用
       document.getElementById('meta-submit-msg').disabled = survey.status === 'closed';
+      document.getElementById('meta-deadline').disabled = survey.status === 'closed';
+      document.getElementById('save-meta').disabled = survey.status === 'closed';
+      if (survey.status === 'closed') {
+        document.getElementById('meta-msg').classList.add('hidden');
+      }
+      // 题目结构发布后即冻结：加题入口一并收起，避免用户点了必然 409
+      ['bank-toggle', 'add-toggle'].forEach((k) => {
+        const el = document.getElementById(k);
+        if (el) el.classList.toggle('hidden', survey.status !== 'draft');
+      });
     }
 
     function ruleText(q, rule) {

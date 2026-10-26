@@ -177,7 +177,7 @@
           .map(
             (r) => `
           <div class="list-item" style="display:block">
-            <div class="small muted">${fmtTime(r.submitted_at)} · ${r.anonymous ? '匿名' : '用户 ' + esc(r.respondent_id)} · <span class="mono">${r.id}</span></div>
+            <div class="small muted">${fmtTime(r.submitted_at)} · ${r.anonymous ? '匿名填写' : '登录用户填写'} · <span class="mono">${r.id}</span></div>
             <div style="margin-top:6px">
               ${r.answers
                 .map(

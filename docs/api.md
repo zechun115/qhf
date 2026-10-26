@@ -28,6 +28,8 @@
 | 422 | `VALIDATION_FAILED` | 答卷未通过校验，`details.errors` 给出逐题原因 |
 | 500 | `INTERNAL_ERROR` | 未预期的服务端异常 |
 
+> 路径参数里的 ObjectId 格式不合法（例如 `/api/surveys/not-an-id`）统一返回 `400 BAD_REQUEST`，不会冒成 500，前端可以直接把提示展示给用户。
+
 ### 0.2 通用枚举
 
 - 题型 `type`：`single` 单选、`multiple` 多选、`text` 文本填空、`number` 数字填空
@@ -454,7 +456,9 @@
 
 ### 5b.8 使用情况（被哪些问卷使用）
 
-`GET /api/bank-questions/:id/usage` → `200`
+`GET /api/bank-questions/:id/usage` → `200`（**仅题目创建者**；被共享者 403）
+
+> 该接口会返回引用问卷的标题，属于出题人的统计视图。题目共享出去后，被共享者只获得「读题 + 选题 + fork」的权限，不应看到别人问卷的标题，因此这里按 owner 收敛。
 
 ```json
 { "version_count": 3, "survey_count": 2,
@@ -464,11 +468,12 @@
 
 ### 5b.9 单题跨问卷统计（聚合管道）
 
-`GET /api/bank-questions/:id/stats` → `200`
+`GET /api/bank-questions/:id/stats` → `200`（**仅题目创建者**；被共享者 403）
 
 - 范围：该题**整棵版本树**在所有问卷中的快照作答
 - 选项类：`option_counts: [{key,label,count}]`；数字类：`number_stats:{count,min,max,avg}`；文本类：`text_stats:{count,samples[≤20]}`；日期类：`date_counts:[{date,count}]`
 - 另返回 `survey_count`（引用问卷数）、`response_count`（作答人数）、`total_answers`
+- 跨问卷会聚合到其他用户问卷里的作答内容，因此同样只对出题人开放
 
 ### 5b.10 把问卷题存为常用题
 

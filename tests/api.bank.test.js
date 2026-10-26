@@ -359,3 +359,108 @@ describe('题库跨问卷统计（完整数据流）', () => {
     assert.equal(res.body.response_count, 0);
   });
 });
+
+/**
+ * 多用户可用性审计后补充的回归测试（T89~T92）。
+ * 这几条覆盖「别人用这个系统时」最容易踩到的坑：
+ * 共享题的越权查看、版本历史被污染、非法 id 变成 500、选题参数非法。
+ */
+describe('题库权限与健壮性回归（T89~T92）', () => {
+  let sharedBankId;
+
+  test('T89 被共享者看不到「使用情况」与「跨问卷统计」（避免暴露他人问卷与答卷）', async () => {
+    const bank = await api
+      .post('/api/bank-questions')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ type: 'single', title: '共享可见性测试', options: ['甲', '乙'] });
+    assert.equal(bank.status, 201);
+    sharedBankId = bank.body.question.id;
+
+    const share = await api
+      .post(`/api/bank-questions/${sharedBankId}/share`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ username: 'bob' });
+    assert.equal(share.status, 200);
+
+    // 被共享者拥有读权限：详情、版本历史都可以看
+    const detail = await api.get(`/api/bank-questions/${sharedBankId}`).set('Authorization', `Bearer ${bobToken}`);
+    assert.equal(detail.status, 200);
+    const versions = await api
+      .get(`/api/bank-questions/${sharedBankId}/versions`)
+      .set('Authorization', `Bearer ${bobToken}`);
+    assert.equal(versions.status, 200);
+
+    // 但「使用情况 / 跨问卷统计」只属于出题人
+    const usageBob = await api
+      .get(`/api/bank-questions/${sharedBankId}/usage`)
+      .set('Authorization', `Bearer ${bobToken}`);
+    assert.equal(usageBob.status, 403);
+    const statsBob = await api
+      .get(`/api/bank-questions/${sharedBankId}/stats`)
+      .set('Authorization', `Bearer ${bobToken}`);
+    assert.equal(statsBob.status, 403);
+
+    // 出题人自己可以正常查看
+    const usageAlice = await api
+      .get(`/api/bank-questions/${sharedBankId}/usage`)
+      .set('Authorization', `Bearer ${aliceToken}`);
+    assert.equal(usageAlice.status, 200);
+    const statsAlice = await api
+      .get(`/api/bank-questions/${sharedBankId}/stats`)
+      .set('Authorization', `Bearer ${aliceToken}`);
+    assert.equal(statsAlice.status, 200);
+  });
+
+  test('T90 修改题库题只追加新版本，历史版本的内容与时间戳都不再变动', async () => {
+    const before = await api
+      .get(`/api/bank-questions/${sharedBankId}/versions`)
+      .set('Authorization', `Bearer ${aliceToken}`);
+    const v1Before = before.body.versions.find((v) => v.version === 1);
+    assert.ok(v1Before, '应存在 v1');
+
+    const put = await api
+      .put(`/api/bank-questions/${sharedBankId}`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ title: '共享可见性测试（改）' });
+    assert.equal(put.status, 201);
+    assert.equal(put.body.question.version, 2);
+
+    const after = await api
+      .get(`/api/bank-questions/${sharedBankId}/versions`)
+      .set('Authorization', `Bearer ${aliceToken}`);
+    assert.equal(after.body.versions.length, 2);
+    const v1After = after.body.versions.find((v) => v.version === 1);
+    assert.equal(v1After.title, v1Before.title);
+    assert.equal(new Date(v1After.updated_at).getTime(), new Date(v1Before.updated_at).getTime());
+  });
+
+  test('T91 非法 id 统一返回 400（不再冒 500 服务器内部错误）', async () => {
+    const cases = [
+      ['get', '/api/surveys/not-an-id'],
+      ['get', '/api/surveys/not-an-id/stats'],
+      ['get', '/api/bank-questions/not-an-id'],
+      ['patch', '/api/questions/not-an-id'],
+      ['delete', '/api/questions/not-an-id'],
+    ];
+    for (const [method, url] of cases) {
+      const res = await api[method](url).set('Authorization', `Bearer ${aliceToken}`);
+      assert.equal(res.status, 400, `${method.toUpperCase()} ${url} 应返回 400，实际 ${res.status}`);
+      assert.equal(res.body.error.code, 'BAD_REQUEST');
+    }
+  });
+
+  test('T92 从题库选题：id 非法 → 400，题目不存在 → 404', async () => {
+    const survey = await createSurvey(api, aliceToken, { title: '健壮性问卷' });
+    const bad = await api
+      .post(`/api/surveys/${survey.id}/questions`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ bank_question_id: 'not-an-id' });
+    assert.equal(bad.status, 400);
+
+    const missing = await api
+      .post(`/api/surveys/${survey.id}/questions`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ bank_question_id: '507f1f77bcf86cd799439011' });
+    assert.equal(missing.status, 404);
+  });
+});

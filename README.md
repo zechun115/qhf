@@ -13,7 +13,7 @@
 | ODM | Mongoose 8 | 只用于模型定义与校验，统计使用原生聚合管道 |
 | 认证 | JWT（jsonwebtoken）+ bcryptjs | 无状态登录，密码只存 bcrypt 哈希 |
 | 前端 | 原生 HTML + CSS + JavaScript | 不使用框架，页面直接放在 `public/` 下由 Express 托管 |
-| 测试 | node:test + supertest | 88 个自动化用例，连接真实 MongoDB 实例 |
+| 测试 | node:test + supertest | 92 个自动化用例，连接真实 MongoDB 实例 |
 
 前端与后端**共用同一套规则引擎**：`src/core/validation.js`、`src/core/jump.js` 采用 UMD 写法，服务端 `require()` 加载，浏览器通过 `/core/*.js` 加载，因此「跳转规则」「校验规则」只有一份实现，不会出现前后端判断不一致。
 
@@ -106,7 +106,7 @@ npm test
 MONGO_TEST_URI=mongodb://127.0.0.1:27027 npm test
 ```
 
-当前结果：**88 个用例全部通过**（规则引擎 19 + 账号 6 + 问卷管理 13 + 填写跳转 13 + 统计 7 + 常用功能 11 + 第二阶段题库 19）。
+当前结果：**92 个用例全部通过**（规则引擎 19 + 账号 6 + 问卷管理 13 + 填写跳转 13 + 统计 7 + 常用功能 11 + 第二阶段题库 23）。
 
 ## 4. 功能与需求对应
 

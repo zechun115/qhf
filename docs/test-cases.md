@@ -169,6 +169,10 @@
 | T86 | usage 跨问卷反查 | `GET /:id/usage` | `survey_count=2` | 通过 |
 | T87 | 数字题统计分支 | 两份答卷分别填 30、60 | `min=30`、`max=60`、`avg=45` | 通过 |
 | T88 | 未使用题统计 | 对从未被引用的题库题取 stats | 200；全零，不报错 | 通过 |
+| T89 | 共享题的数据边界 | Bob（被共享者）取 `usage` / `stats`；Alice（作者）取同样接口 | Bob 403；Alice 200（详情与版本历史 Bob 仍可读） | 通过 |
+| T90 | 版本历史不可变 | 修改题库题出 v2 后回看 v1 | v1 的题干与 `updated_at` 均未变化，版本数 2 | 通过 |
+| T91 | 非法 id 的错误码 | `/api/surveys/not-an-id`、`/api/bank-questions/not-an-id`、`PATCH /api/questions/not-an-id` 等 | 统一 400 `BAD_REQUEST`（不再冒 500） | 通过 |
+| T92 | 选题参数健壮性 | `POST /surveys/:id/questions` 传非法 / 不存在的 `bank_question_id` | 400 / 404 | 通过 |
 
 ---
 

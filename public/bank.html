@@ -100,6 +100,46 @@
     </div>
   </div>
 
+  <!-- 修改题库题弹窗：保存后生成新版本，历史全部保留 -->
+  <div class="modal hidden" id="edit-modal">
+    <div class="modal-box" style="max-width:560px">
+      <div class="between" style="margin-bottom:12px">
+        <h3 style="margin:0">修改题目（生成新版本）</h3>
+        <button class="small" id="edit-close">✕</button>
+      </div>
+      <p class="small muted" id="edit-hint"></p>
+      <div class="row">
+        <label class="field" style="width:160px">
+          <span>题型</span>
+          <select id="e-type">
+            <option value="single">单选题</option>
+            <option value="multiple">多选题</option>
+            <option value="dropdown">下拉选择</option>
+            <option value="rating">评分题（1~5 星）</option>
+            <option value="text">文本填空</option>
+            <option value="number">数字填空</option>
+            <option value="date">日期</option>
+          </select>
+        </label>
+        <label class="field grow">
+          <span>题干</span>
+          <input type="text" id="e-title" />
+        </label>
+      </div>
+      <label class="field" id="e-options-box">
+        <span>选项（每行一个，可写成「A. 学生」，也可只写文字）</span>
+        <textarea id="e-options"></textarea>
+      </label>
+      <p class="small muted hidden" id="e-rating-hint">评分题固定为 1~5 星，无需配置选项。</p>
+      <label class="row" style="gap:6px;margin-bottom:10px"><input type="checkbox" id="e-required" /> 必答题</label>
+      <div class="row">
+        <button class="primary" id="e-save">保存为新版本</button>
+        <button id="e-cancel">取消</button>
+      </div>
+      <div class="err hidden" id="e-msg"></div>
+    </div>
+  </div>
+
   <!-- 使用情况弹窗 -->
   <div class="modal hidden" id="usage-modal">
     <div class="modal-box">
@@ -140,6 +180,7 @@
 
     let scope = 'mine';
     let shareTargetId = null;
+    let bankList = [];
 
     function parseOptions(text) {
       return text.split('\n').map((s) => s.trim()).filter(Boolean)
@@ -193,6 +234,7 @@
       const box = document.getElementById('list');
       try {
         const data = await api('/bank-questions?scope=' + scope);
+        bankList = data.questions;
         if (!data.questions.length) {
           box.innerHTML = '<p class="muted">' +
             (scope === 'mine' ? '题库还是空的，点右上角「新建题目」，或在问卷编辑页把常用题「存为常用题」。' : '还没有人共享题目给你。') +
@@ -217,8 +259,8 @@
               <button class="small" data-act="versions" data-id="${q.id}">版本历史</button>
               ${q.is_owner ? '<button class="small" data-act="share" data-id="' + q.id + '" data-title="' + esc(q.title) + '">共享</button>' : ''}
               <button class="small" data-act="fork" data-id="${q.id}">${q.is_owner ? '复制为新题' : '复制到我的题库'}</button>
-              <button class="small" data-act="usage" data-id="${q.id}">使用情况</button>
-              <button class="small" data-act="stats" data-id="${q.id}">跨问卷统计</button>
+              ${q.is_owner ? '<button class="small" data-act="usage" data-id="' + q.id + '">使用情况</button>' : ''}
+              ${q.is_owner ? '<button class="small" data-act="stats" data-id="' + q.id + '">跨问卷统计</button>' : ''}
             </div>
           </div>`
           )
@@ -244,16 +286,62 @@
           setTab('mine');
         } catch (err) { alert(err.message); }
       }
-      if (name === 'edit') {
-        const t = prompt('新的题干（保存后会生成新版本，旧版本保留）：');
-        if (t === null || !t.trim()) return;
-        try {
-          await api('/bank-questions/' + qid, { method: 'PUT', body: { title: t.trim() } });
-          toast('已生成新版本');
-          load();
-        } catch (err) { alert(err.message); }
-      }
+      if (name === 'edit') return openEdit(qid);
     }
+
+    // ── 修改题目（生成新版本）──
+    let editingBankId = null;
+
+    function optionsToText(options) {
+      return (options || []).map((o) => o.key + '. ' + o.label).join('\n');
+    }
+
+    function toggleEditTypeFields() {
+      const t = document.getElementById('e-type').value;
+      document.getElementById('e-options-box').classList.toggle('hidden', !['single', 'multiple', 'dropdown'].includes(t));
+      document.getElementById('e-rating-hint').classList.toggle('hidden', t !== 'rating');
+    }
+    document.getElementById('e-type').onchange = toggleEditTypeFields;
+
+    function openEdit(qid) {
+      const q = bankList.find((x) => x.id === qid);
+      if (!q) return;
+      editingBankId = qid;
+      document.getElementById('edit-hint').textContent =
+        '当前 v' + q.version + '，保存后生成 v' + (q.version + 1) + '；历史版本全部保留，已引用旧版本的问卷不受影响。';
+      document.getElementById('e-type').value = q.type;
+      document.getElementById('e-title').value = q.title;
+      document.getElementById('e-required').checked = Boolean(q.required);
+      document.getElementById('e-options').value = optionsToText(q.options);
+      document.getElementById('e-msg').classList.add('hidden');
+      toggleEditTypeFields();
+      document.getElementById('edit-modal').classList.remove('hidden');
+    }
+
+    document.getElementById('e-save').onclick = async () => {
+      const msg = document.getElementById('e-msg');
+      msg.classList.add('hidden');
+      const type = document.getElementById('e-type').value;
+      const body = {
+        type,
+        title: document.getElementById('e-title').value,
+        required: document.getElementById('e-required').checked,
+      };
+      if (['single', 'multiple', 'dropdown'].includes(type)) {
+        body.options = parseOptions(document.getElementById('e-options').value);
+      }
+      try {
+        await api('/bank-questions/' + editingBankId, { method: 'PUT', body });
+        document.getElementById('edit-modal').classList.add('hidden');
+        toast('已生成新版本');
+        load();
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.classList.remove('hidden');
+      }
+    };
+    document.getElementById('e-cancel').onclick = () => document.getElementById('edit-modal').classList.add('hidden');
+    document.getElementById('edit-close').onclick = () => document.getElementById('edit-modal').classList.add('hidden');
 
     // ── 版本历史 ──
     async function showVersions(qid) {
@@ -422,7 +510,7 @@
     }
 
     // 弹窗点击遮罩关闭
-    ['ver-modal', 'share-modal', 'usage-modal', 'stat-modal'].forEach((m) => {
+    ['ver-modal', 'share-modal', 'usage-modal', 'stat-modal', 'edit-modal'].forEach((m) => {
       document.getElementById(m).onclick = (e) => {
         if (e.target.id === m) e.target.classList.add('hidden');
       };

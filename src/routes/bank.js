@@ -39,14 +39,26 @@ async function loadUserByUsername(username) {
 
 /** 取题库题并校验「owner 或被共享者」身份 */
 async function loadAccessibleBankQuestion(req) {
+  if (!mongoose.isValidObjectId(req.params.id)) throw badRequest('题库题目 id 格式不正确');
   const q = await BankQuestion.findById(req.params.id);
   if (!q) throw notFound('题库题目不存在');
-  const uid = mongoose.Types.ObjectId.createFromHexString(String(req.user.id));
   const isOwner = String(q.owner_id) === String(req.user.id);
   const isShared = (q.shared_with || []).some((u) => String(u) === String(req.user.id));
   if (!isOwner && !isShared) throw forbidden('没有访问该题库题目的权限');
   return { q, isOwner };
 }
+
+/**
+ * 「使用情况」「跨问卷统计」只对出题人开放。
+ *
+ * 原因：这两个接口会把引用该题的问卷标题、以及跨问卷汇总后的答卷内容一起返回。
+ * 题目被共享出去后，被共享者只是「可以使用这道题」，不应该看到别人问卷的
+ * 标题与答卷数据，否则共享一次就等于把对方的数据暴露了。
+ */
+function assertOwner(isOwner) {
+  if (!isOwner) throw forbidden('只有题目创建者可以查看使用情况与跨问卷统计');
+}
+
 
 /** 树内最新版本号 */
 async function maxVersionOf(rootId) {
@@ -189,8 +201,9 @@ router.put(
       constraints: body.constraints !== undefined ? body.constraints : q.constraints,
     });
     const next = await appendVersion(q, payload, req.user.id, q._id);
-    q.updated_at = new Date();
-    await q.save();
+    // 注意：这里刻意不改动旧版本文档（不改 updated_at）。
+    // 版本历史应当是只读的，旧版本一旦产生就不再变化；列表页取的是每棵树里
+    // version 最大的那条，新版本的 updated_at 本来就是最新的，排序不受影响。
     res.status(201).json({ question: toJson(next), previous_version: q.version });
   })
 );
@@ -295,7 +308,8 @@ router.get(
   '/:id/usage',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { q } = await loadAccessibleBankQuestion(req);
+    const { q, isOwner } = await loadAccessibleBankQuestion(req);
+    assertOwner(isOwner);
     const versionIds = await BankQuestion.find({ root_id: q.root_id }).distinct('_id');
     const refs = await Question.find({ bank_question_id: { $in: versionIds } })
       .select('survey_id bank_question_id bank_version title order');
@@ -327,7 +341,8 @@ router.get(
   '/:id/stats',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { q } = await loadAccessibleBankQuestion(req);
+    const { q, isOwner } = await loadAccessibleBankQuestion(req);
+    assertOwner(isOwner);
     const versionIds = await BankQuestion.find({ root_id: q.root_id }).distinct('_id');
     const refs = await Question.find({ bank_question_id: { $in: versionIds } }).select('survey_id');
     const surveyIds = [...new Set(refs.map((r) => r.survey_id))];
