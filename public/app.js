@@ -116,4 +116,28 @@
   }
 
   window.App = { Auth, api, el, esc, toast, fmtTime, statusTag, query, copy };
+
+  /* 「更多」下拉：全局委托，页面只写结构不写交互。
+     点按钮切换自己、点别处或按 Esc 关闭，同时只允许展开一个。 */
+  function closeMenus(except) {
+    document.querySelectorAll('.more.open').forEach((m) => {
+      if (m !== except) m.classList.remove('open');
+    });
+  }
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.more > button');
+    if (trigger) {
+      const box = trigger.parentElement;
+      const willOpen = !box.classList.contains('open');
+      closeMenus();
+      box.classList.toggle('open', willOpen);
+      return;
+    }
+    // 点了菜单项就收起（菜单项自己的 click 已经在冒泡前触发）
+    if (!e.target.closest('.more-list')) closeMenus();
+    else setTimeout(() => closeMenus(), 0);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMenus();
+  });
 })();

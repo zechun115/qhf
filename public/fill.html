@@ -6,12 +6,14 @@
   <title>填写问卷</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
-<body>
+<body class="fill-page">
   <div class="wrap">
     <div class="card" id="head">
-      <h2 id="title">加载中…</h2>
-      <p class="sub" id="desc"></p>
-      <p class="small muted" id="hint"></p>
+      <div class="fill-head">
+        <h1 id="title">加载中…</h1>
+        <p class="desc" id="desc"></p>
+        <p class="small muted" id="hint" style="margin:10px 0 0"></p>
+      </div>
     </div>
 
     <div class="card" id="body">
@@ -32,6 +34,7 @@
     let answers = {}; // qid -> { option_keys } | { text } | { number }
     let currentId = null;
     let step = 1;
+    let visited = []; // 走过的题目 id：跳转规则下 path 会随答案变化，回退只能靠这条栈
 
     const typeLabel = {
       single: '单选题', multiple: '多选题', text: '文本填空', number: '数字填空',
@@ -50,11 +53,13 @@
     function renderHead() {
       document.getElementById('title').textContent = survey.title;
       document.getElementById('desc').textContent = survey.description || '';
+      document.title = survey.title;
       const bits = [];
       bits.push('共 ' + survey.question_count + ' 题');
+      // 按每题约 12 秒估算，给填写者一个心理预期（主流问卷系统的常见做法）
+      bits.push('约 ' + Math.max(1, Math.ceil((survey.question_count * 12) / 60)) + ' 分钟');
       if (survey.deadline) bits.push('截止 ' + new Date(survey.deadline).toLocaleString());
-      if (survey.allow_anonymous) bits.push('可匿名填写');
-      bits.push('已登录：' + (Auth.user() ? Auth.user().username : '否'));
+      bits.push(survey.allow_anonymous ? '可匿名填写' : '需登录填写');
       document.getElementById('hint').textContent = bits.join(' · ');
     }
 
@@ -140,15 +145,28 @@
       }
 
       const isLast = idx >= path.length - 1;
+      const percent = Math.round(((idx + 1) / total) * 100);
+      const steps = path
+        .map((p, i) => '<span class="' + (i < idx ? 'done' : i === idx ? 'cur' : '') + '">' + p.order + '</span>')
+        .join('');
       body.innerHTML = `
-        <div class="progress"><i style="width:${Math.round(((idx + 1) / total) * 100)}%"></i></div>
-        <p class="small muted" style="margin:0 0 8px">第 ${step} 步 · 第 ${q.order} 题 · ${typeLabel[q.type]}${q.required ? ' · 必答' : ''}</p>
-        <h2 style="font-size:16px;margin:0 0 12px">${esc(q.title)}</h2>
-        <div id="opts">${input}</div>
+        <div class="fill-progress">
+          <span>进度</span>
+          <div class="track"><i style="width:${percent}%"></i></div>
+          <b>${percent}%</b>
+        </div>
+        ${path.length > 1 && path.length <= 30 ? '<div class="fill-steps">' + steps + '</div>' : '<div style="height:10px"></div>'}
+        <p class="small muted" style="margin:0 0 6px">第 ${step} 步 · 第 ${q.order} 题 · ${typeLabel[q.type]}${q.required ? ' · 必答' : ''}</p>
+        <div class="fill-q">
+          <h2>${esc(q.title)}</h2>
+          ${q.required ? '<span class="req" title="必答">*</span>' : ''}
+        </div>
+        <div class="fill-opts" id="opts">${input}</div>
         <div class="err hidden" id="err"></div>
-        <div class="row" style="margin-top:16px">
+        <div class="fill-nav">
+          <button id="prev" ${visited.length <= 1 ? 'disabled' : ''}>上一题</button>
+          <span class="hint">${isLast ? '提交后不可修改，请确认无误' : '答案会自动保留，可随时回退修改'}</span>
           <button class="primary" id="next">${isLast ? '提交答卷' : '下一题'}</button>
-          <span class="small muted" id="skip-tip"></span>
         </div>`;
 
       const optBox = document.getElementById('opts');
@@ -177,6 +195,17 @@
       });
 
       document.getElementById('next').onclick = onNext;
+      document.getElementById('prev').onclick = onPrev;
+    }
+
+    /** 回退：按访问栈回上一题，答案保留。跳转规则下 path 会重算，栈比下标更可靠。 */
+    function onPrev() {
+      if (visited.length <= 1) return;
+      visited.pop();
+      currentId = visited[visited.length - 1];
+      step = Math.max(1, step - 1);
+      renderQuestion();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     async function onNext() {
@@ -196,6 +225,7 @@
       const idx = path.findIndex((x) => x.id === currentId);
       if (idx < path.length - 1) {
         currentId = path[idx + 1].id;
+        visited.push(currentId);
         step += 1;
         renderQuestion();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -210,11 +240,15 @@
       try {
         const res = await api('/fill/' + code + '/submit', { method: 'POST', body: { answers: payload } });
         document.getElementById('head').innerHTML =
-          '<h2>提交成功</h2><p class="sub">' + esc(res.submit_message || '感谢你的参与，答卷已保存。') + '</p>';
+          '<div class="fill-head"><h1>提交成功</h1><p class="desc">' +
+          esc(res.submit_message || '感谢你的参与，答卷已保存。') +
+          '</p></div>';
         document.getElementById('body').innerHTML =
-          '<p class="ok">共作答 ' + res.answered_count + ' 题，作答路径：第 ' + res.path.join(' → ') + ' 题</p>' +
-          (res.ended_early ? '<p class="small muted">本次作答按问卷规则提前结束。</p>' : '') +
-          '<p class="small muted">答卷编号：<span class="mono">' + res.response_id + '</span></p>';
+          '<div class="empty" style="padding:12px 16px 20px">谢谢填写<br />' +
+          '<span class="small">共作答 ' + res.answered_count + ' 题' +
+          (res.ended_early ? '，按问卷规则提前结束' : '') +
+          '</span></div>' +
+          '<p class="small muted" style="text-align:center;margin:0">你可以关闭本页了。</p>';
       } catch (err) {
         btn.disabled = false;
         btn.textContent = '提交答卷';
@@ -252,6 +286,8 @@
 
         renderHead();
         currentId = computePath()[0].id;
+        visited = [currentId];
+        step = 1;
         renderQuestion();
       } catch (err) {
         document.getElementById('head').innerHTML = '<h2>无法打开问卷</h2>';

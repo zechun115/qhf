@@ -10,25 +10,25 @@
   <div class="nav">
     <div class="brand">问卷系统</div>
     <div class="links">
-      <span class="who" id="who"></span>
+      <span class="user" id="user-chip" hidden><i id="user-initial">?</i><span id="who"></span></span>
       <a href="/dashboard.html">我的问卷</a>
-      <a href="/bank.html">题目库</a>
+      <a href="/bank.html" class="active">题目库</a>
       <a href="#" id="logout">退出</a>
     </div>
   </div>
 
-  <div class="wrap">
+  <div class="wrap wide">
     <div class="card">
       <div class="between">
         <div>
           <h2>题目库</h2>
-          <p class="sub">常用题目存这里，做问卷时直接选；改题会生成新版本，不影响已发布的问卷。</p>
+          <p class="sub" style="margin-bottom:0">常用题目存这里，做问卷时直接选；改题会生成新版本，不影响已发布的问卷。</p>
         </div>
-        <button class="primary" id="new-toggle">新建题目</button>
+        <button class="primary" id="new-toggle">＋ 新建题目</button>
       </div>
 
       <!-- 新建题目表单 -->
-      <div id="new-box" class="hidden" style="border-top:1px solid var(--line);padding-top:16px;margin-top:4px">
+      <div id="new-box" class="hidden" style="border-top:2px dashed var(--line-soft);padding-top:16px;margin-top:14px">
         <div class="row">
           <label class="field" style="width:160px">
             <span>题型</span>
@@ -59,12 +59,21 @@
         </div>
         <div class="err hidden" id="b-msg"></div>
       </div>
+    </div>
 
-      <div class="row" style="margin-top:16px;gap:0">
-        <button class="small" id="tab-mine">我的题目</button>
-        <button class="small" id="tab-shared">共享给我的</button>
+    <div class="card">
+      <div class="toolbar">
+        <div class="input-search">
+          <input type="text" id="b-kw" placeholder="搜索题干或选项…" autocomplete="off" />
+        </div>
+        <div class="seg" id="scope-seg">
+          <button data-scope="mine" class="on">我的题目</button>
+          <button data-scope="shared">共享给我的</button>
+        </div>
+        <div class="grow"></div>
+        <span class="muted small" id="b-count"></span>
       </div>
-      <div id="list" style="margin-top:12px"><p class="muted">加载中…</p></div>
+      <div id="list"><div class="skeleton"><i style="width:64%"></i><i style="width:44%"></i><i style="width:56%"></i></div></div>
     </div>
   </div>
 
@@ -166,7 +175,10 @@
   <script>
     const { Auth, api, esc, toast, fmtTime } = App;
     if (!Auth.requireLogin()) throw new Error('redirect');
-    document.getElementById('who').textContent = (Auth.user() || {}).username || '';
+    const me = Auth.user() || {};
+    document.getElementById('who').textContent = me.username || '';
+    document.getElementById('user-initial').textContent = (me.username || '?').slice(0, 1).toUpperCase();
+    document.getElementById('user-chip').hidden = false;
     document.getElementById('logout').onclick = (e) => {
       e.preventDefault();
       Auth.clear();
@@ -193,12 +205,15 @@
 
     function setTab(next) {
       scope = next;
-      document.getElementById('tab-mine').style.fontWeight = next === 'mine' ? 'bold' : 'normal';
-      document.getElementById('tab-shared').style.fontWeight = next === 'shared' ? 'bold' : 'normal';
+      document.querySelectorAll('#scope-seg button').forEach((b) => b.classList.toggle('on', b.dataset.scope === next));
       load();
     }
-    document.getElementById('tab-mine').onclick = () => setTab('mine');
-    document.getElementById('tab-shared').onclick = () => setTab('shared');
+    document.getElementById('scope-seg').onclick = (e) => {
+      const btn = e.target.closest('button[data-scope]');
+      if (btn) setTab(btn.dataset.scope);
+    };
+    // 题库一次全量取回，搜索在前端过滤即可（不额外打接口）
+    document.getElementById('b-kw').oninput = () => load();
 
     // ── 新建题目 ──
     const newBox = document.getElementById('new-box');
@@ -232,38 +247,63 @@
     // ── 列表 ──
     async function load() {
       const box = document.getElementById('list');
+      const kw = document.getElementById('b-kw').value.trim().toLowerCase();
       try {
         const data = await api('/bank-questions?scope=' + scope);
         bankList = data.questions;
-        if (!data.questions.length) {
-          box.innerHTML = '<p class="muted">' +
-            (scope === 'mine' ? '题库还是空的，点右上角「新建题目」，或在问卷编辑页把常用题「存为常用题」。' : '还没有人共享题目给你。') +
-            '</p>';
+        const visible = kw
+          ? bankList.filter((q) =>
+              (q.title + ' ' + (q.options || []).map((o) => o.label).join(' ')).toLowerCase().includes(kw)
+            )
+          : bankList;
+        document.getElementById('b-count').textContent = visible.length ? '共 ' + visible.length + ' 道题' : '';
+
+        if (!visible.length) {
+          box.innerHTML = kw
+            ? '<div class="empty">没有匹配「' + esc(kw) + '」的题目<br /><span class="small">换个关键词试试</span></div>'
+            : scope === 'mine'
+              ? '<div class="empty">题库还是空的<br /><span class="small">点「新建题目」，或在问卷编辑页把常用题「存为常用题」</span></div>'
+              : '<div class="empty">还没有人共享题目给你<br /><span class="small">队友在题目库点「共享」并输入你的用户名即可</span></div>';
           return;
         }
-        box.innerHTML = data.questions
-          .map(
-            (q) => `
+
+        box.innerHTML = visible
+          .map((q) => {
+            const opts =
+              q.type === 'rating'
+                ? '固定选项：1 星 ~ 5 星'
+                : q.options && q.options.length
+                  ? q.options.map((o) => esc(o.key + '. ' + o.label)).join('　')
+                  : '无选项';
+            const tag = [typeLabel[q.type], q.required ? '必答' : '', q.is_shared_to_me ? '来自 ' + (q.owner_username || '他人') : '']
+              .filter(Boolean)
+              .join(' · ');
+            const moreItems = q.is_owner
+              ? '<button data-act="share" data-id="' + q.id + '" data-title="' + esc(q.title) + '">共享给他人</button>' +
+                '<button data-act="usage" data-id="' + q.id + '">使用情况</button>' +
+                '<button data-act="stats" data-id="' + q.id + '">跨问卷统计</button>' +
+                '<div class="sep"></div>' +
+                '<button data-act="fork" data-id="' + q.id + '">复制为新题</button>'
+              : '';
+            return `
           <div class="list-item">
             <div class="grow">
-              <div class="title"><span class="tag">v${q.version}</span> <strong>${esc(q.title)}</strong>
-                <span class="small muted">（${typeLabel[q.type]}${q.required ? ' · 必答' : ''}${q.is_shared_to_me ? ' · 来自 ' + esc(q.owner_username || '他人共享') : ''}）</span></div>
-              <div class="small muted">${
-                q.type === 'rating' ? '固定选项：1 星 ~ 5 星'
-                : q.options && q.options.length ? q.options.map((o) => esc(o.key + '. ' + o.label)).join('　') : '无选项'
-              }</div>
-              <div class="small muted">更新于 ${fmtTime(q.updated_at)}</div>
+              <div class="title"><span class="tag">v${q.version}</span> ${esc(q.title)}
+                <span class="small muted" style="font-weight:400">${tag}</span></div>
+              <div class="small muted" style="margin-top:2px">${opts}</div>
+              <div class="meta"><span>更新于 ${fmtTime(q.updated_at)}</span></div>
             </div>
-            <div class="row" style="gap:6px">
-              ${q.is_owner ? '<button class="small" data-act="edit" data-id="' + q.id + '">修改（新版本）</button>' : ''}
+            <div class="ops">
+              ${
+                q.is_owner
+                  ? '<button class="small main" data-act="edit" data-id="' + q.id + '">修改（新版本）</button>'
+                  : '<button class="small main" data-act="fork" data-id="' + q.id + '">加到我的题库</button>'
+              }
               <button class="small" data-act="versions" data-id="${q.id}">版本历史</button>
-              ${q.is_owner ? '<button class="small" data-act="share" data-id="' + q.id + '" data-title="' + esc(q.title) + '">共享</button>' : ''}
-              <button class="small" data-act="fork" data-id="${q.id}">${q.is_owner ? '复制为新题' : '复制到我的题库'}</button>
-              ${q.is_owner ? '<button class="small" data-act="usage" data-id="' + q.id + '">使用情况</button>' : ''}
-              ${q.is_owner ? '<button class="small" data-act="stats" data-id="' + q.id + '">跨问卷统计</button>' : ''}
+              ${q.is_owner ? '<div class="more"><button class="small">更多 ▾</button><div class="more-list">' + moreItems + '</div></div>' : ''}
             </div>
-          </div>`
-          )
+          </div>`;
+          })
           .join('');
 
         box.querySelectorAll('[data-act]').forEach((btn) => {
@@ -284,7 +324,7 @@
           await api('/bank-questions/' + qid + '/fork', { method: 'POST' });
           toast('已复制到我的题库（新题目 v1）');
           setTab('mine');
-        } catch (err) { alert(err.message); }
+        } catch (err) { toast(err.message); }
       }
       if (name === 'edit') return openEdit(qid);
     }
@@ -378,7 +418,7 @@
               toast('已恢复为最新版本');
               modal.classList.add('hidden');
               load();
-            } catch (err) { alert(err.message); }
+            } catch (err) { toast(err.message); }
           };
         });
       } catch (err) {

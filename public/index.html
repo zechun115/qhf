@@ -29,6 +29,9 @@
         <div class="err hidden" id="msg"></div>
         <button class="primary" style="width:100%;margin-top:8px" type="submit" id="submit">登录</button>
       </form>
+      <p class="small muted" style="margin:16px 0 0;text-align:center;line-height:1.9">
+        演示账号 <b>demo</b> / <b>123456</b>，登录后可看到示例问卷与题目库
+      </p>
     </div>
   </div>
 
@@ -66,6 +69,8 @@
       e.preventDefault();
       msg.classList.add('hidden');
       submitBtn.disabled = true;
+      const original = submitBtn.textContent;
+      submitBtn.textContent = mode === 'login' ? '登录中…' : '注册中…';
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       try {
@@ -78,6 +83,7 @@
         msg.classList.remove('hidden');
       } finally {
         submitBtn.disabled = false;
+        submitBtn.textContent = original;
       }
     };
   </script>

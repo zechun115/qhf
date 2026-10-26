@@ -107,7 +107,14 @@
 
 ### 2.2 我的问卷列表
 
-`GET /api/surveys?page=1&size=20&status=published`
+`GET /api/surveys?page=1&size=20&status=published&q=反馈&sort=updated`
+
+| 查询参数 | 说明 |
+| --- | --- |
+| `page` / `size` | 页码与每页条数（默认 1 / 20） |
+| `status` | `draft` / `published` / `closed`，省略为全部 |
+| `q` | 按标题模糊搜索（不区分大小写，最长 60 字，正则元字符会被转义） |
+| `sort` | `created`（默认，按创建时间倒序）/ `updated`（按更新时间倒序） |
 
 ```json
 {
@@ -115,6 +122,23 @@
   "items": [ { "...": "同 2.1，另含 response_count 答卷数" } ]
 }
 ```
+
+### 2.2b 首页汇总指标（界面用）
+
+`GET /api/surveys/overview` → `200`
+
+```json
+{
+  "surveys": { "total": 4, "draft": 1, "published": 2, "closed": 1 },
+  "responses": 37,
+  "questions": 6,
+  "bank": { "mine": 5, "shared": 2 }
+}
+```
+
+一次返回首页四张指标卡需要的数字，避免前端为每张卡片各发一次请求。`bank.mine` 为本人题库根题数，`bank.shared` 为他人共享给我的题数。
+
+> 该路由必须注册在 `/:id` 之前，否则 `overview` 会被当成问卷 id。
 
 ### 2.3 问卷详情（含题目）
 

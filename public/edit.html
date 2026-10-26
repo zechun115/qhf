@@ -10,6 +10,7 @@
   <div class="nav">
     <div class="brand">问卷系统</div>
     <div class="links">
+      <span class="user" id="user-chip" hidden><i id="user-initial">?</i><span id="who"></span></span>
       <a href="/dashboard.html">我的问卷</a>
       <a href="/bank.html">题目库</a>
       <a href="#" id="logout">退出</a>
@@ -21,11 +22,14 @@
       <div class="between">
         <div>
           <h2 id="survey-title">加载中…</h2>
-          <p class="sub" id="survey-meta"></p>
+          <p class="sub" id="survey-meta" style="margin-bottom:0"></p>
         </div>
         <div class="row" id="actions"></div>
       </div>
-      <div class="row small" style="margin-top:6px">
+      <div id="status-banner" class="banner hidden" style="margin:14px 0 0">
+        <span class="grow" id="status-text"></span>
+      </div>
+      <div class="row small" style="margin-top:12px">
         <span class="mono" id="share-url"></span>
         <button class="small" id="copy-link">复制填写链接</button>
         <a id="open-link" target="_blank"><button class="small">打开填写页</button></a>
@@ -33,12 +37,13 @@
       <div class="err hidden" id="top-msg"></div>
     </div>
 
-    <div class="card">
-      <div class="between">
-        <h2>问卷设置</h2>
-        <button class="small" id="save-meta">保存设置</button>
-      </div>
-      <div style="margin-top:12px">
+    <details class="panel" id="meta-panel">
+      <summary>问卷设置 <span class="hint" id="meta-hint">标题、说明、截止时间与提交后提示语</span></summary>
+      <div class="panel-body">
+        <div class="between" style="margin-bottom:12px">
+          <span class="small muted">改完记得点右侧按钮保存</span>
+          <button class="primary small" id="save-meta">保存设置</button>
+        </div>
         <label class="field"><span>标题</span><input type="text" id="meta-title" /></label>
         <label class="field"><span>说明</span><textarea id="meta-desc"></textarea></label>
         <div class="row" style="margin-bottom:12px">
@@ -55,11 +60,11 @@
         </label>
         <div class="err hidden" id="meta-msg"></div>
       </div>
-    </div>
+    </details>
 
     <div class="card" id="q-card">
       <div class="between">
-        <h2>题目列表</h2>
+        <h2>题目列表 <span class="small muted" id="q-count" style="font-weight:400"></span></h2>
         <div class="row" style="gap:6px">
           <button class="small" id="bank-toggle">从题库选题</button>
           <button class="primary small" id="add-toggle">添加题目</button>
@@ -83,7 +88,7 @@
       </div>
 
       <!-- 题目表单 -->
-      <div id="q-form" class="hidden" style="border:1px solid var(--line);border-radius:8px;padding:16px;margin-top:14px;background:#fcfcfd">
+      <div id="q-form" class="hidden" style="border:2px solid var(--text);padding:16px;margin-top:14px;background:var(--bg-soft)">
         <div class="between" style="margin-bottom:10px">
           <strong id="q-form-title">添加题目</strong>
           <button class="small" id="q-form-cancel">收起</button>
@@ -151,6 +156,11 @@
     const { Auth, api, esc, toast, fmtTime, statusTag } = App;
     if (!Auth.requireLogin()) throw new Error('redirect');
 
+    const me = Auth.user() || {};
+    document.getElementById('who').textContent = me.username || '';
+    document.getElementById('user-initial').textContent = (me.username || '?').slice(0, 1).toUpperCase();
+    document.getElementById('user-chip').hidden = false;
+
     const id = App.query('id');
     let survey = null;
     let questions = [];
@@ -199,6 +209,17 @@
       document.getElementById('share-url').textContent = survey.share_url;
       document.getElementById('open-link').href = survey.share_url;
 
+      // 状态横幅：先说清「当前能做什么」，再让用户看按钮，减少点了才知道不行的情况
+      const banner = document.getElementById('status-banner');
+      const text = document.getElementById('status-text');
+      const info = {
+        draft: ['warn', '草稿状态：题目可以自由增删改。发布后题目结构即冻结——到时候要改题，请复制为新问卷。'],
+        published: ['ok', '已发布：正在收集答卷，题目已冻结。现在仍可修改截止时间与提交后提示语。'],
+        closed: ['mute', '已关闭：不再接收新答卷，问卷内容只读。'],
+      }[survey.status];
+      banner.className = 'banner ' + info[0];
+      text.innerHTML = '<b>' + info[1].split('：')[0] + '：</b>' + info[1].split('：').slice(1).join('：');
+
       const actions = document.getElementById('actions');
       const btns = [];
       btns.push('<a href="/stats.html?id=' + id + '"><button class="small">查看统计</button></a>');
@@ -237,6 +258,9 @@
         ? new Date(new Date(survey.deadline).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
         : '';
       document.getElementById('meta-submit-msg').value = survey.submit_message || '';
+      document.getElementById('meta-hint').textContent =
+        survey.status === 'draft' ? '标题、说明、截止时间与提交后提示语' : survey.status === 'published' ? '已发布：标题与说明已锁定' : '已关闭：全部只读';
+      document.getElementById('q-count').textContent = '共 ' + survey.question_count + ' 题';
       const locked = survey.status !== 'draft';
       ['meta-title', 'meta-desc', 'meta-anon', 'meta-multi'].forEach((k) => {
         document.getElementById(k).disabled = locked;
@@ -298,19 +322,19 @@
             if (c.integer) constraints.push('必须为整数');
           }
 
+          // 跳转规则原本每条占一行，题目多时把列表撑得很高；改为一行内用「；」分隔
           const rules = (q.jump_rules || [])
             .map(
               (r, ri) =>
-                '<div class="small" style="margin-top:4px">• ' + esc(ruleText(q, r)) +
-                (editable ? ' <a href="#" data-del-rule="' + q.id + '" data-rule-i="' + ri + '">删除</a>' : '') +
-                '</div>'
+                esc(ruleText(q, r)) +
+                (editable ? ' <a href="#" data-del-rule="' + q.id + '" data-rule-i="' + ri + '" style="text-decoration:none">×</a>' : '')
             )
-            .join('');
+            .join('；');
 
           const jumpForm =
             jumpOpenId === q.id && editable
               ? `
-            <div style="border:1px dashed var(--line);border-radius:8px;padding:12px;margin-top:10px;background:#fbfbfc">
+            <div style="border:2px dashed var(--line-soft);padding:12px;margin-top:10px;background:#fff">
               <div class="row">
                 <label class="field" style="width:190px"><span>条件</span>
                   <select data-jump-op="${q.id}">
@@ -335,38 +359,43 @@
               : '';
 
           return `
-          <div class="question-block">
-            <div class="between">
-              <div class="grow">
-                <div><span class="tag">第 ${q.order} 题</span> <strong>${esc(q.title)}</strong>
-                  <span class="small muted">（${typeLabel[q.type]}${q.required ? ' · 必答' : ''}）</span>
-                  ${q.bank_question_id ? '<span class="tag">题库题 v' + q.bank_version + '</span>' : ''}</div>
-                <div class="small muted">${
-                  q.type === 'rating'
-                    ? '固定选项：1 星 ~ 5 星'
-                    : q.type === 'date'
-                      ? '填写者选择日期（YYYY-MM-DD）'
-                      : q.options && q.options.length
-                        ? q.options.map((o) => esc(o.key + '. ' + o.label)).join('　')
-                        : '无选项'
-                }</div>
-                ${constraints.length ? '<div class="small muted">约束：' + esc(constraints.join('，')) + '</div>' : ''}
-                ${rules ? '<div class="small" style="margin-top:6px">跳转规则：' + rules + '</div>' : ''}
-              </div>
-              ${
-                editable
-                  ? `<div class="row" style="gap:6px">
-                      <button class="small" data-save-bank="${q.id}">存为常用题</button>
+          <div class="q-item">
+            <div class="no">${q.order}</div>
+            <div class="body">
+              <div class="t">${esc(q.title)}
+                <span class="tag">${typeLabel[q.type]}${q.required ? ' · 必答' : ''}</span>
+                ${q.bank_question_id ? '<span class="tag">题库题 v' + q.bank_version + '</span>' : ''}</div>
+              <div class="preview">${
+                q.type === 'rating'
+                  ? '固定选项：1 星 ~ 5 星'
+                  : q.type === 'date'
+                    ? '填写者选择日期（YYYY-MM-DD）'
+                    : q.options && q.options.length
+                      ? q.options.map((o) => '<span class="opt-line">' + esc(o.key + '. ' + o.label) + '</span>').join('')
+                      : '无选项'
+              }</div>
+              ${constraints.length ? '<div class="preview">约束：' + esc(constraints.join('，')) + '</div>' : ''}
+              ${rules ? '<div class="jump">跳转：' + rules + '</div>' : ''}
+              ${jumpForm}
+            </div>
+            ${
+              editable
+                ? `<div class="ops">
                       <button class="small" data-edit="${q.id}">编辑</button>
                       <button class="small" data-jump="${q.id}">跳转</button>
-                      <button class="small" data-up="${q.id}" ${i === 0 ? 'disabled' : ''}>上移</button>
-                      <button class="small" data-down="${q.id}" ${i === questions.length - 1 ? 'disabled' : ''}>下移</button>
-                      <button class="small danger" data-del="${q.id}">删除</button>
+                      <div class="more">
+                        <button class="small">更多 ▾</button>
+                        <div class="more-list">
+                          <button data-save-bank="${q.id}">存为常用题</button>
+                          <button data-up="${q.id}" ${i === 0 ? 'disabled' : ''}>上移</button>
+                          <button data-down="${q.id}" ${i === questions.length - 1 ? 'disabled' : ''}>下移</button>
+                          <div class="sep"></div>
+                          <button data-del="${q.id}" style="color:var(--danger)">删除本题</button>
+                        </div>
+                      </div>
                     </div>`
-                  : ''
-              }
-            </div>
-            ${jumpForm}
+                : ''
+            }
           </div>`;
         })
         .join('');
@@ -442,7 +471,7 @@
         await load();
         toast('跳转规则已添加');
       } catch (err) {
-        alert(err.message);
+        toast(err.message);
       }
     }
 
@@ -454,7 +483,7 @@
         await load();
         toast('已删除规则');
       } catch (err) {
-        alert(err.message);
+        toast(err.message);
       }
     }
 
@@ -529,7 +558,7 @@
               await load();
               toast('已从题库添加题目');
             } catch (err) {
-              alert(err.message);
+              toast(err.message);
             }
           };
         });
@@ -560,7 +589,7 @@
         await api('/bank-questions/from-question', { method: 'POST', body: { question_id: qid } });
         toast('已保存到题库，可在「题目库」页查看');
       } catch (err) {
-        alert(err.message);
+        toast(err.message);
       }
     }
 
@@ -611,7 +640,7 @@
         await load();
         toast('已删除');
       } catch (err) {
-        alert(err.message);
+        toast(err.message);
       }
     }
 
@@ -625,7 +654,7 @@
         await api('/surveys/' + id + '/questions/order', { method: 'PUT', body: { question_ids: ids } });
         await load();
       } catch (err) {
-        alert(err.message);
+        toast(err.message);
       }
     }
 

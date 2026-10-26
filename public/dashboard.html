@@ -10,24 +10,48 @@
   <div class="nav">
     <div class="brand">问卷系统</div>
     <div class="links">
-      <span class="who" id="who"></span>
-      <a href="/dashboard.html">我的问卷</a>
+      <span class="user" id="user-chip" hidden><i id="user-initial">?</i><span id="who"></span></span>
+      <a href="/dashboard.html" class="active">我的问卷</a>
       <a href="/bank.html">题目库</a>
       <a href="#" id="logout">退出</a>
     </div>
   </div>
 
-  <div class="wrap">
+  <div class="wrap wide">
+    <!-- 工作台概览：与问卷星/金数据的首页指标一致，先给概览再给列表 -->
+    <div class="metrics" id="metrics">
+      <div class="metric">
+        <div class="k">我的问卷</div>
+        <div class="v" id="m-total">–</div>
+        <div class="d" id="m-total-d">草稿 0 · 已发布 0 · 已关闭 0</div>
+      </div>
+      <div class="metric ok">
+        <div class="k">进行中的问卷</div>
+        <div class="v" id="m-live">–</div>
+        <div class="d">已发布、仍可填写的问卷</div>
+      </div>
+      <div class="metric accent">
+        <div class="k">累计答卷</div>
+        <div class="v" id="m-resp">–</div>
+        <div class="d">所有问卷收到的已提交答卷</div>
+      </div>
+      <div class="metric warn">
+        <div class="k">题目库</div>
+        <div class="v" id="m-bank">–</div>
+        <div class="d" id="m-bank-d">共享给我 0 道</div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="between">
         <div>
           <h2>我的问卷</h2>
-          <p class="sub">在这里创建问卷、发布链接、查看统计</p>
+          <p class="sub" style="margin-bottom:0">创建问卷、发布填写链接、查看统计</p>
         </div>
-        <button class="primary" id="create-btn">新建问卷</button>
+        <button class="primary" id="create-btn">＋ 新建问卷</button>
       </div>
 
-      <div id="create-box" class="hidden" style="border-top:1px solid var(--line);padding-top:16px;margin-top:4px">
+      <div id="create-box" class="hidden" style="border-top:2px dashed var(--line-soft);padding-top:16px;margin-top:14px">
         <label class="field">
           <span>问卷标题</span>
           <input type="text" id="new-title" placeholder="例如：课程反馈调查" />
@@ -41,7 +65,7 @@
           <label class="row" style="gap:6px"><input type="checkbox" id="new-multi" checked /> 允许同一人多次填写</label>
         </div>
         <div class="row">
-          <button class="primary" id="create-ok">创建</button>
+          <button class="primary" id="create-ok">创建并开始编辑</button>
           <button id="create-cancel">取消</button>
         </div>
         <div class="err hidden" id="create-msg"></div>
@@ -49,33 +73,49 @@
     </div>
 
     <div class="card">
-      <div class="between" style="margin-bottom:12px">
-        <div class="row">
-          <select id="status-filter" style="width:140px">
-            <option value="">全部状态</option>
-            <option value="draft">草稿</option>
-            <option value="published">已发布</option>
-            <option value="closed">已关闭</option>
-          </select>
+      <div class="toolbar">
+        <div class="input-search">
+          <input type="text" id="kw" placeholder="搜索问卷标题…" autocomplete="off" />
         </div>
+        <div class="seg" id="status-seg">
+          <button data-status="" class="on">全部</button>
+          <button data-status="draft">草稿</button>
+          <button data-status="published">已发布</button>
+          <button data-status="closed">已关闭</button>
+        </div>
+        <div class="grow"></div>
+        <select id="sort" style="width:150px">
+          <option value="created">按创建时间</option>
+          <option value="updated">按最近修改</option>
+        </select>
         <span class="muted small" id="total"></span>
       </div>
-      <div id="list"><p class="muted">加载中…</p></div>
+      <div id="list"><div class="skeleton"><i style="width:60%"></i><i style="width:40%"></i><i style="width:52%"></i></div></div>
       <div id="pager" class="row" style="justify-content:center;margin-top:14px"></div>
     </div>
   </div>
 
-  <!-- 二维码弹窗：展示填写链接的扫码入口 -->
+  <!-- 分享弹窗：链接 + 二维码合在一处，与主流问卷系统的「分享」入口一致 -->
   <div class="modal hidden" id="qr-modal">
-    <div class="modal-box">
-      <div class="between" style="margin-bottom:12px">
-        <h3 style="margin:0">扫码填写</h3>
+    <div class="modal-box wide">
+      <div class="between" style="margin-bottom:6px">
+        <h3>分享问卷</h3>
         <button class="small" id="qr-close">✕</button>
       </div>
-      <p class="small muted" id="qr-title"></p>
-      <div class="qr-wrap"><img id="qr-img" alt="问卷填写二维码" /></div>
-      <p class="small mono" id="qr-url" style="word-break:break-all;margin-top:10px"></p>
-      <p class="small muted">手机扫码或访问上方链接即可填写，无需登录（若问卷允许匿名）。</p>
+      <p class="small muted" id="qr-title" style="margin:0 0 12px"></p>
+      <label class="field" style="margin-bottom:14px">
+        <span>填写链接</span>
+        <input type="text" id="qr-url" readonly />
+      </label>
+      <div class="row" style="margin-bottom:14px">
+        <button class="primary small" id="qr-copy">复制链接</button>
+        <button class="small" id="qr-open">打开填写页</button>
+      </div>
+      <div id="qr-box">
+        <div class="qr-wrap"><img id="qr-img" alt="问卷填写二维码" /></div>
+        <p class="small muted" style="margin:8px 0 0">手机扫码即可填写。二维码只对已发布的问卷生成。</p>
+      </div>
+      <p class="small muted hidden" id="qr-note" style="margin:10px 0 0;color:var(--warn)"></p>
     </div>
   </div>
 
@@ -83,7 +123,11 @@
   <script>
     const { Auth, api, esc, toast, fmtTime, statusTag } = App;
     if (!Auth.requireLogin()) throw new Error('redirect');
-    document.getElementById('who').textContent = (Auth.user() || {}).username || '';
+
+    const user = Auth.user() || {};
+    document.getElementById('who').textContent = user.username || '';
+    document.getElementById('user-initial').textContent = (user.username || '?').slice(0, 1).toUpperCase();
+    document.getElementById('user-chip').hidden = false;
 
     document.getElementById('logout').onclick = (e) => {
       e.preventDefault();
@@ -92,8 +136,14 @@
     };
 
     const createBox = document.getElementById('create-box');
-    document.getElementById('create-btn').onclick = () => createBox.classList.toggle('hidden');
+    document.getElementById('create-btn').onclick = () => {
+      createBox.classList.toggle('hidden');
+      if (!createBox.classList.contains('hidden')) document.getElementById('new-title').focus();
+    };
     document.getElementById('create-cancel').onclick = () => createBox.classList.add('hidden');
+    document.getElementById('new-title').onkeydown = (e) => {
+      if (e.key === 'Enter') document.getElementById('create-ok').click();
+    };
 
     document.getElementById('create-ok').onclick = async () => {
       const msg = document.getElementById('create-msg');
@@ -116,14 +166,55 @@
     };
 
     let page = 1;
+    let status = '';
+    let keyword = '';
     const PAGE_SIZE = 10;
 
+    /** 概览指标：单独接口一次取回，避免为每个问卷各请求一次统计 */
+    async function loadOverview() {
+      try {
+        const o = await api('/surveys/overview');
+        const setNum = (id, n) => {
+          const el = document.getElementById(id);
+          el.textContent = n;
+          el.classList.toggle('zero', Number(n) === 0);
+        };
+        setNum('m-total', o.surveys.total);
+        // 只列非零状态，窄屏下才不会被折成两行
+        const parts = [];
+        if (o.surveys.draft) parts.push('草稿 ' + o.surveys.draft);
+        if (o.surveys.published) parts.push('已发布 ' + o.surveys.published);
+        if (o.surveys.closed) parts.push('已关闭 ' + o.surveys.closed);
+        document.getElementById('m-total-d').textContent = parts.length ? parts.join(' · ') : '还没有问卷';
+        setNum('m-live', o.surveys.published);
+        setNum('m-resp', o.responses);
+        setNum('m-bank', o.bank.mine);
+        document.getElementById('m-bank-d').textContent = o.bank.shared ? '共享给我 ' + o.bank.shared + ' 道' : '共享给我 0 道';
+      } catch (e) {
+        /* 概览失败不影响列表使用 */
+      }
+    }
+
+    /** 打开分享弹窗：先把链接填上，二维码异步补（草稿/已关闭不生成） */
+    function openShare(s) {
+      document.getElementById('qr-title').textContent = '「' + s.title + '」';
+      document.getElementById('qr-url').value = s.share_url;
+      document.getElementById('qr-img').src = '';
+      document.getElementById('qr-note').classList.add('hidden');
+      document.getElementById('qr-box').classList.toggle('hidden', s.status !== 'published');
+      document.getElementById('qr-modal').classList.remove('hidden');
+    }
+
     async function load() {
-      const status = document.getElementById('status-filter').value;
       const box = document.getElementById('list');
       const pager = document.getElementById('pager');
       try {
-        const data = await api('/surveys?page=' + page + '&size=' + PAGE_SIZE + (status ? '&status=' + status : ''));
+        const qs =
+          '/surveys?page=' + page + '&size=' + PAGE_SIZE +
+          (status ? '&status=' + status : '') +
+          (keyword ? '&q=' + encodeURIComponent(keyword) : '') +
+          '&sort=' + document.getElementById('sort').value;
+        const data = await api(qs);
         const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
         // 删到当前页没数据时自动回退一页，避免停在空白页
         if (page > totalPages) {
@@ -131,56 +222,84 @@
           return load();
         }
         document.getElementById('total').textContent =
-          '共 ' + data.total + ' 份' + (totalPages > 1 ? ' · 第 ' + page + '/' + totalPages + ' 页' : '');
+          data.total ? '共 ' + data.total + ' 份' + (totalPages > 1 ? ' · ' + page + '/' + totalPages : '') : '';
+
         if (!data.items.length) {
           pager.innerHTML = '';
-          box.innerHTML = '<p class="muted">' + (status ? '当前筛选条件下没有问卷。' : '还没有问卷，点右上角「新建问卷」开始。') + '</p>';
+          box.innerHTML = keyword || status
+            ? '<div class="empty">没有符合条件的问卷<br /><span class="small">换个关键词或状态试试</span></div>'
+            : '<div class="empty">还没有问卷<br /><span class="small">点右上角「新建问卷」，3 步就能发布第一份</span></div>';
           return;
         }
+
         box.innerHTML = data.items
-          .map(
-            (s) => `
+          .map((s) => {
+            const ops = [
+              '<a href="/edit.html?id=' + s.id + '"><button class="small main">编辑</button></a>',
+              '<a href="/stats.html?id=' + s.id + '"><button class="small">统计</button></a>',
+              '<div class="more">' +
+                '<button class="small">更多 ▾</button>' +
+                '<div class="more-list">' +
+                  '<button data-act="share" data-id="' + s.id + '" data-title="' + esc(s.title) + '" data-pub="' + (s.status === 'published' ? '1' : '') + '">分享与二维码</button>' +
+                  '<button data-act="dup" data-id="' + s.id + '" data-title="' + esc(s.title) + '">复制为草稿</button>' +
+                  '<button data-act="export" data-id="' + s.id + '"' + (s.response_count ? '' : ' disabled') + '>导出答卷 CSV</button>' +
+                  (s.status === 'draft' ? '<div class="sep"></div><button data-act="del" data-id="' + s.id + '" data-title="' + esc(s.title) + '" style="color:var(--danger)">删除问卷</button>' : '') +
+                '</div>' +
+              '</div>',
+            ].join('');
+            return `
           <div class="list-item">
             <div class="grow">
               <div class="title">${esc(s.title)} ${statusTag(s.status)}</div>
-              <div class="small muted">
-                ${s.question_count} 题 · ${s.response_count} 份答卷 · 创建于 ${fmtTime(s.created_at)}
-                ${s.deadline ? ' · 截止 ' + fmtTime(s.deadline) : ''}
+              <div class="meta">
+                <span><b>${s.question_count}</b> 题</span>
+                <span><b>${s.response_count}</b> 份答卷</span>
+                <span>创建于 ${fmtTime(s.created_at)}</span>
+                ${s.deadline ? '<span>截止 ' + fmtTime(s.deadline) + '</span>' : ''}
               </div>
-              <div class="small mono" style="margin-top:4px">${esc(s.share_url)}</div>
+              <div class="small mono" style="margin-top:4px;color:var(--muted)">${esc(s.share_url)}</div>
             </div>
-            <div class="row" style="gap:6px">
-              <button class="small" data-act="copy" data-url="${esc(s.share_url)}">复制链接</button>
-              <button class="small" data-act="qrcode" data-id="${s.id}" data-title="${esc(s.title)}" ${s.status === 'published' ? '' : 'disabled'}>二维码</button>
-              <button class="small" data-act="dup" data-id="${s.id}" data-title="${esc(s.title)}">复制问卷</button>
-              <button class="small" data-act="export" data-id="${s.id}" ${s.response_count ? '' : 'disabled'}>导出答卷</button>
-              <a class="small" href="/stats.html?id=${s.id}"><button class="small">统计</button></a>
-              <a class="small" href="/edit.html?id=${s.id}"><button class="small">编辑</button></a>
-            </div>
-          </div>`
-          )
+            <div class="ops">${ops}</div>
+          </div>`;
+          })
           .join('');
 
         pager.innerHTML =
-          '<button class="small" id="page-prev" ' + (page <= 1 ? 'disabled' : '') + '>上一页</button>' +
-          '<span class="small muted" style="padding:0 8px">第 ' + page + ' / ' + totalPages + ' 页</span>' +
-          '<button class="small" id="page-next" ' + (page >= totalPages ? 'disabled' : '') + '>下一页</button>';
-        document.getElementById('page-prev').onclick = () => {
-          if (page > 1) {
-            page -= 1;
-            load();
-          }
-        };
-        document.getElementById('page-next').onclick = () => {
-          if (page < totalPages) {
-            page += 1;
-            load();
-          }
-        };
+          (totalPages > 1
+            ? '<button class="small" id="page-prev" ' + (page <= 1 ? 'disabled' : '') + '>上一页</button>' +
+              '<span class="small muted" style="padding:0 8px">第 ' + page + ' / ' + totalPages + ' 页</span>' +
+              '<button class="small" id="page-next" ' + (page >= totalPages ? 'disabled' : '') + '>下一页</button>'
+            : '');
+        const prev = document.getElementById('page-prev');
+        const next = document.getElementById('page-next');
+        if (prev) prev.onclick = () => { if (page > 1) { page -= 1; load(); } };
+        if (next) next.onclick = () => { if (page < totalPages) { page += 1; load(); } };
 
-        box.querySelectorAll('[data-act="copy"]').forEach((btn) => {
-          btn.onclick = () => App.copy(btn.dataset.url);
+        const sid = (n) => data.items.find((x) => x.id === n);
+
+        box.querySelectorAll('[data-act="share"]').forEach((btn) => {
+          btn.onclick = async () => {
+            const s = sid(btn.dataset.id);
+            openShare(s);
+            document.getElementById('qr-open').onclick = () => window.open(s.share_url, '_blank');
+            document.getElementById('qr-copy').onclick = () => App.copy(s.share_url);
+            if (s.status !== 'published') {
+              const note = document.getElementById('qr-note');
+              note.textContent = '该问卷还是' + (s.status === 'closed' ? '已关闭' : '草稿') + '状态，对方暂时无法填写；可先复制链接备用。';
+              note.classList.remove('hidden');
+              return;
+            }
+            try {
+              const res = await api('/surveys/' + s.id + '/qrcode');
+              document.getElementById('qr-img').src = res.qr_data_url;
+              document.getElementById('qr-url').value = res.fill_url;
+            } catch (err) {
+              document.getElementById('qr-note').textContent = '二维码生成失败：' + err.message;
+              document.getElementById('qr-note').classList.remove('hidden');
+            }
+          };
         });
+
         box.querySelectorAll('[data-act="dup"]').forEach((btn) => {
           btn.onclick = async () => {
             if (!confirm('复制「' + btn.dataset.title + '」为一份新草稿问卷？')) return;
@@ -189,31 +308,27 @@
               toast('已创建副本，共复制 ' + res.copied_questions + ' 道题');
               page = 1;
               load();
+              loadOverview();
             } catch (err) {
-              alert(err.message);
+              toast(err.message);
             }
           };
         });
-        box.querySelectorAll('[data-act="qrcode"]').forEach((btn) => {
+
+        box.querySelectorAll('[data-act="del"]').forEach((btn) => {
           btn.onclick = async () => {
-            const modal = document.getElementById('qr-modal');
-            document.getElementById('qr-title').textContent = '「' + btn.dataset.title + '」';
-            document.getElementById('qr-img').src = '';
-            document.getElementById('qr-url').textContent = '生成中…';
-            modal.classList.remove('hidden');
+            if (!confirm('删除「' + btn.dataset.title + '」？题目会一并删除，且不可恢复。')) return;
             try {
-              const res = await api('/surveys/' + btn.dataset.id + '/qrcode');
-              document.getElementById('qr-img').src = res.qr_data_url;
-              document.getElementById('qr-url').textContent = res.fill_url;
+              await api('/surveys/' + btn.dataset.id, { method: 'DELETE' });
+              toast('问卷已删除');
+              load();
+              loadOverview();
             } catch (err) {
-              document.getElementById('qr-url').textContent = err.message;
+              toast(err.message);
             }
           };
         });
-        document.getElementById('qr-close').onclick = () => document.getElementById('qr-modal').classList.add('hidden');
-        document.getElementById('qr-modal').onclick = (e) => {
-          if (e.target.id === 'qr-modal') e.target.classList.add('hidden');
-        };
+
         box.querySelectorAll('[data-act="export"]').forEach((btn) => {
           btn.onclick = () => exportCsv(btn.dataset.id);
         });
@@ -221,6 +336,11 @@
         box.innerHTML = '<p class="err">' + esc(err.message) + '</p>';
       }
     }
+
+    document.getElementById('qr-close').onclick = () => document.getElementById('qr-modal').classList.add('hidden');
+    document.getElementById('qr-modal').onclick = (e) => {
+      if (e.target.id === 'qr-modal') e.target.classList.add('hidden');
+    };
 
     /** 导出答卷 CSV：带 Authorization 头的下载只能用 fetch + blob 实现（浏览器下载链接无法带令牌） */
     async function exportCsv(surveyId) {
@@ -237,14 +357,34 @@
         URL.revokeObjectURL(a.href);
         toast('答卷已导出');
       } catch (err) {
-        alert(err.message);
+        toast(err.message);
       }
     }
 
-    document.getElementById('status-filter').onchange = () => {
+    // 搜索防抖：连续输入只在停下来后请求一次
+    let kwTimer = null;
+    document.getElementById('kw').oninput = (e) => {
+      clearTimeout(kwTimer);
+      kwTimer = setTimeout(() => {
+        keyword = e.target.value.trim();
+        page = 1;
+        load();
+      }, 260);
+    };
+    document.getElementById('status-seg').onclick = (e) => {
+      const btn = e.target.closest('button[data-status]');
+      if (!btn) return;
+      document.querySelectorAll('#status-seg button').forEach((b) => b.classList.toggle('on', b === btn));
+      status = btn.dataset.status;
       page = 1;
       load();
     };
+    document.getElementById('sort').onchange = () => {
+      page = 1;
+      load();
+    };
+
+    loadOverview();
     load();
   </script>
 </body>

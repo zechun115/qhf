@@ -5,6 +5,7 @@ const QRCode = require('qrcode');
 const Survey = require('../models/Survey');
 const Question = require('../models/Question');
 const Response = require('../models/Response');
+const BankQuestion = require('../models/BankQuestion');
 const { asyncHandler, badRequest, notFound, forbidden, conflict } = require('../utils/errors');
 const { requireAuth } = require('../middleware/auth');
 
@@ -88,6 +89,36 @@ router.post(
   })
 );
 
+// 工作台概览：一次返回各状态问卷数、答卷总数与题库题数，供首页指标卡使用。
+// 放在 '/:id' 之前，否则 'overview' 会被当成 id 匹配。
+router.get(
+  '/overview',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const uid = req.user.id;
+    const [total, draft, published, closed, bankMine, bankShared, surveyIds] = await Promise.all([
+      Survey.countDocuments({ owner_id: uid }),
+      Survey.countDocuments({ owner_id: uid, status: 'draft' }),
+      Survey.countDocuments({ owner_id: uid, status: 'published' }),
+      Survey.countDocuments({ owner_id: uid, status: 'closed' }),
+      BankQuestion.countDocuments({ owner_id: uid }),
+      BankQuestion.countDocuments({ shared_with: uid }),
+      Survey.find({ owner_id: uid }).select('_id').lean(),
+    ]);
+    const ids = surveyIds.map((s) => s._id);
+    const [responseTotal, questionTotal] = await Promise.all([
+      ids.length ? Response.countDocuments({ survey_id: { $in: ids } }) : 0,
+      ids.length ? Question.countDocuments({ survey_id: { $in: ids } }) : 0,
+    ]);
+    res.json({
+      surveys: { total, draft, published, closed },
+      responses: responseTotal,
+      questions: questionTotal,
+      bank: { mine: bankMine, shared: bankShared },
+    });
+  })
+);
+
 // 我的问卷列表
 router.get(
   '/',
@@ -97,9 +128,16 @@ router.get(
     const size = Math.min(50, Math.max(1, parseInt(req.query.size, 10) || 20));
     const filter = { owner_id: req.user.id };
     if (req.query.status) filter.status = req.query.status;
+    // 关键词搜索：标题模糊匹配；用户输入里的正则元字符必须转义，
+    // 否则输入 "(" 之类的字符会让查询抛错，或被当成正则做全表扫描。
+    if (req.query.q && String(req.query.q).trim()) {
+      const kw = String(req.query.q).trim().slice(0, 60).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.title = { $regex: kw, $options: 'i' };
+    }
+    const sortKey = req.query.sort === 'updated' ? { updated_at: -1 } : { created_at: -1 };
 
     const [items, total] = await Promise.all([
-      Survey.find(filter).sort({ created_at: -1 }).skip((page - 1) * size).limit(size),
+      Survey.find(filter).sort(sortKey).skip((page - 1) * size).limit(size),
       Survey.countDocuments(filter),
     ]);
 
