@@ -144,6 +144,34 @@
 
 ---
 
+## 5c. 第二阶段：题库与题目版本管理（tests/api.bank.test.js，19 条）
+
+对应「需求变更说明」八项需求：常用题保存复用、题目共享、改题不影响已发布问卷、版本历史与恢复、多版本并存、使用情况反查、题库管理、单题跨问卷统计。
+
+| 编号 | 用例 | 输入 | 预期输出 | 结果 |
+| --- | --- | --- | --- | --- |
+| T70 | 创建题库题 | Alice 创建单选题「你的年龄」 | 201；`version=1`；`root_id=自身 id` | 通过 |
+| T71 | 我的题库列表 | `GET /bank-questions?scope=mine` | 200；能看到刚创建的题，`is_owner=true` | 通过 |
+| T72 | 他人题库隔离 / 未登录 | Bob 查列表；未登录请求 | Bob 列表为空；未登录 401 | 通过 |
+| T73 | 修改 = 新版本 | `PUT /bank-questions/:id` 改题干与选项 | 201；`version=2`；`parent_id` 指向 v1；v1 保留可查 | 通过 |
+| T74 | 版本链可查 | `GET /:id/versions` | 200；v1→v2 链条完整，`latest_version=2` | 通过 |
+| T75 | 恢复旧版本 | `POST /:id/revert {version:1}` | 201；v3 内容同 v1；历史链变 v1→v2→v3 | 通过 |
+| T76 | 共享题库题 | `POST /:id/share {username:"bob"}`；Bob 查 `scope=shared` | 200；Bob 列表可见，`is_shared_to_me=true` | 通过 |
+| T77 | 共享权限边界 | Bob `PUT` Alice 的题（应 403）；Bob fork 后再改 | 403；fork 成新树 v1，Bob 可自由修改出新版本 | 通过 |
+| T78 | 越权 / 共享给不存在用户 | Carol 访问未共享题；share 给不存在的用户名 | 403；404 | 通过 |
+| T79 | 问卷题存入题库 + 从题库选题 | `from-question` 保存多选题；新问卷传 `bank_question_id` | 201；选题后问卷题是快照且带 `bank_question_id` / `bank_version`；他人问卷的题不能存（403） | 通过 |
+| T80 | 改题不影响已用问卷（需求③核心） | 题库题出 v2 改选项；查问卷内题目 | 问卷内仍是选题时快照（v1 内容与选项） | 通过 |
+| T81 | 使用情况反查（需求⑥） | `GET /:id/usage` | 200；`survey_count=1`，含问卷标题与使用版本 | 通过 |
+| T82 | 已发布问卷不能从题库加题 | `POST /surveys/:id/questions {bank_question_id}` | 409（题目结构冻结） | 通过 |
+| T83 | 取消共享 | `POST /:id/unshare {username:"bob"}` | Bob 的 `scope=shared` 列表为空 | 通过 |
+| T84 | 跨问卷统计准备 | 两份问卷各引用同一题库题并发布、各填答卷 | 问卷发布、提交均 201 | 通过 |
+| T85 | 跨问卷选项统计（需求⑧） | `GET /:id/stats`（A 卷选 A×2，B 卷选 B×1、C×1） | `survey_count=2`、`response_count=4`；选项计数 A=2/B=1/C=1 | 通过 |
+| T86 | usage 跨问卷反查 | `GET /:id/usage` | `survey_count=2` | 通过 |
+| T87 | 数字题统计分支 | 两份答卷分别填 30、60 | `min=30`、`max=60`、`avg=45` | 通过 |
+| T88 | 未使用题统计 | 对从未被引用的题库题取 stats | 200；全零，不报错 | 通过 |
+
+---
+
 ## 6. 前端流程测试（手工 / 开发期 jsdom 冒烟）
 
 | 编号 | 用例 | 步骤 | 预期 | 结果 |

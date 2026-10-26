@@ -1,6 +1,8 @@
-# 基于 MongoDB 的在线问卷系统（第一阶段）
+# 基于 MongoDB 的在线问卷系统（第一阶段 + 需求变更迭代）
 
-课程大作业第一阶段交付物：一个可运行的简化版问卷系统，支持注册登录、创建问卷、七种题型（单选 / 多选 / 下拉选择 / 评分 / 文本 / 数字 / 日期）、按规则跳转、答案校验、提交保存、答卷导出与统计结果查看。数据全部存放在 MongoDB 中，后端使用 Node.js + Express + Mongoose，前端为原生 HTML/JS 的简单页面。
+课程大作业交付物：一个可运行的简化版问卷系统，支持注册登录、创建问卷、七种题型（单选 / 多选 / 下拉选择 / 评分 / 文本 / 数字 / 日期）、按规则跳转、答案校验、提交保存、答卷导出与统计结果查看。数据全部存放在 MongoDB 中，后端使用 Node.js + Express + Mongoose，前端为原生 HTML/JS 的简单页面。
+
+第二阶段根据用户反馈完成需求变更迭代：新增**题目库**（常用题保存与复用）、题目共享、题目版本管理（修改生成新版本、历史可查、旧版本可恢复）、题目使用情况反查、单题跨问卷统计。设计原则：**问卷侧存题目快照 + 题库版本即文档**，保证改题永不影响已发布的问卷与历史答卷。
 
 ## 1. 技术栈
 
@@ -11,7 +13,7 @@
 | ODM | Mongoose 8 | 只用于模型定义与校验，统计使用原生聚合管道 |
 | 认证 | JWT（jsonwebtoken）+ bcryptjs | 无状态登录，密码只存 bcrypt 哈希 |
 | 前端 | 原生 HTML + CSS + JavaScript | 不使用框架，页面直接放在 `public/` 下由 Express 托管 |
-| 测试 | node:test + supertest | 69 个自动化用例，连接真实 MongoDB 实例 |
+| 测试 | node:test + supertest | 88 个自动化用例，连接真实 MongoDB 实例 |
 
 前端与后端**共用同一套规则引擎**：`src/core/validation.js`、`src/core/jump.js` 采用 UMD 写法，服务端 `require()` 加载，浏览器通过 `/core/*.js` 加载，因此「跳转规则」「校验规则」只有一份实现，不会出现前后端判断不一致。
 
@@ -23,11 +25,12 @@ questionnaire-system/
 │   ├── server.js              # 启动入口：连库 + 监听端口
 │   ├── app.js                 # Express 应用装配、静态资源、统一错误处理
 │   ├── db.js                  # MongoDB 连接
-│   ├── models/                # 4 个集合的模型定义
+│   ├── models/                # 5 个集合的模型定义
 │   │   ├── User.js
 │   │   ├── Survey.js
-│   │   ├── Question.js
-│   │   └── Response.js
+│   │   ├── Question.js        # 含第二阶段的 bank_question_id / bank_version 溯源字段
+│   │   ├── Response.js
+│   │   └── BankQuestion.js    # 第二阶段新增：题库题（版本即文档）
 │   ├── core/                  # 与框架无关的规则引擎（前后端共用）
 │   │   ├── validation.js      # 答案校验
 │   │   ├── jump.js            # 跳转路径计算
@@ -35,7 +38,8 @@ questionnaire-system/
 │   ├── routes/
 │   │   ├── auth.js            # 注册 / 登录 / 当前用户
 │   │   ├── surveys.js         # 问卷增删改查、发布、关闭
-│   │   ├── questions.js       # 题目增删改、排序
+│   │   ├── questions.js       # 题目增删改、排序、从题库选题
+│   │   ├── bank.js            # 第二阶段新增：题库 / 版本 / 共享 / 使用情况 / 跨问卷统计
 │   │   ├── fill.js            # 填写页数据 + 提交答卷
 │   │   └── stats.js           # 整卷统计、单题统计、答卷明细
 │   ├── middleware/auth.js     # JWT 校验（必需 / 可选）
@@ -43,7 +47,8 @@ questionnaire-system/
 ├── public/                    # 前端页面
 │   ├── index.html             # 登录 / 注册
 │   ├── dashboard.html         # 我的问卷列表
-│   ├── edit.html              # 问卷编辑（题目、约束、跳转规则）
+│   ├── edit.html              # 问卷编辑（题目、约束、跳转规则、从题库选题）
+│   ├── bank.html              # 第二阶段新增：题目库（版本历史、共享、跨问卷统计）
 │   ├── fill.html              # 填写页（逐题、按规则跳转）
 │   ├── stats.html             # 统计结果
 │   ├── app.js / style.css     # 公共脚本与样式
@@ -101,7 +106,7 @@ npm test
 MONGO_TEST_URI=mongodb://127.0.0.1:27027 npm test
 ```
 
-当前结果：**69 个用例全部通过**（规则引擎 19 + 账号 6 + 问卷管理 13 + 填写跳转 13 + 统计 7 + 新增常用功能 11）。
+当前结果：**88 个用例全部通过**（规则引擎 19 + 账号 6 + 问卷管理 13 + 填写跳转 13 + 统计 7 + 常用功能 11 + 第二阶段题库 19）。
 
 ## 4. 功能与需求对应
 
@@ -122,6 +127,14 @@ MONGO_TEST_URI=mongodb://127.0.0.1:27027 npm test
 | 答卷导出 | `GET /api/surveys/:id/responses/export` 导出 CSV（UTF-8 BOM，Excel 直接打开） |
 | 提交后提示语 | `surveys.submit_message`，发布后仍可修改 |
 | 扫码填写 | `GET /api/surveys/:id/qrcode` 生成填写页二维码（PNG data URL），列表页弹窗展示，手机扫码直接填写 |
+| **第二阶段** 保存常用题、建问卷时选用 | 题库 `bank_questions` 集合；`POST /api/bank-questions` 创建；`POST /api/surveys/:id/questions` 传 `bank_question_id` 从题库选题（快照 + 溯源） |
+| **第二阶段** 题目共享给其他用户 | `POST /api/bank-questions/:id/share`（树级共享）；被共享者可读、可选、可 fork，不能改原题 |
+| **第二阶段** 改题不影响已发布的问卷 | 问卷题存快照；题库修改永远生成新版本（版本即文档），已发布问卷锁定题目结构 |
+| **第二阶段** 题目修改历史 / 恢复旧版本 | `GET /:id/versions` 版本链 v1→v2→v3；`POST /:id/revert` 以旧版本内容追加新版本，历史不删除 |
+| **第二阶段** 同一题的不同版本同时存在 | 每个版本是独立文档；`POST /:id/fork` 可开新树；不同问卷可引用不同版本 |
+| **第二阶段** 查看题目被哪些问卷使用 | `GET /api/bank-questions/:id/usage`，按溯源字段跨整棵版本树反查 |
+| **第二阶段** 题库管理 | `bank.html` 页面：我的题目 / 共享给我的、新建、版本历史、共享、使用情况 |
+| **第二阶段** 单题跨问卷统计 | `GET /api/bank-questions/:id/stats`，聚合管道跨问卷按题型统计（选项计数 / 数字 min-max-avg / 文本样本 / 日期分布） |
 | 按单选 / 多选 / 下拉 / 评分 / 数字结果跳转 | `question.jump_rules` 存规则，`core/jump.js` 解释执行 |
 | 跳转不写死在程序里 | 规则以文档形式保存在数据库中，编辑页可视化配置 |
 | 填写时校验、错误提示、提交保存 | 前端即时校验 + 后端权威校验（同一份引擎） |

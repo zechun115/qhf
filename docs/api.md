@@ -398,6 +398,91 @@
 
 ---
 
+## 5b. 题库与题目版本管理（第二阶段新增）
+
+所有接口均需 `Authorization: Bearer`。题库题按「版本即文档」组织：每次修改生成新文档（`version+1`，`parent_id` 指向来源版本），同一棵版本树共享 `root_id`。
+
+### 5b.1 创建题库题
+
+`POST /api/bank-questions`
+
+```json
+{ "type": "single", "title": "你的年龄", "options": ["18 岁以下", "18~25 岁", "26~35 岁", "36 岁以上"] }
+```
+
+→ `201`，返回 `{ "question": { "id": "…", "version": 1, "root_id": "…", … } }`（v1 的 `root_id` 等于自身 id）
+
+### 5b.2 题库列表
+
+`GET /api/bank-questions?scope=mine|shared`
+
+- `scope=mine`（默认）：我创建的题目；`scope=shared`：共享给我的题目
+- 每棵版本树只返回最新版本；返回含 `is_owner` / `is_shared_to_me` / `owner_username`
+
+### 5b.3 修改题库题（生成新版本）
+
+`PUT /api/bank-questions/:id`（仅创建者；部分更新，未传字段继承当前版本）
+
+→ `201`，返回新版本与 `previous_version`；旧版本保留，已引用旧版本的问卷不受影响
+
+### 5b.4 fork（复制为新题 / 接收共享）
+
+`POST /api/bank-questions/:id/fork` → `201`。基于任意可访问版本开一棵新版本树，`owner_id` 变为自己，`parent_id` 记录来源（被共享者以此把题目变成自己的再修改）
+
+### 5b.5 版本历史
+
+`GET /api/bank-questions/:id/versions` → `200`
+
+```json
+{ "root_id": "…", "latest_version": 3,
+  "versions": [ { "id": "…", "version": 1, "title": "你的年龄", "parent_id": null },
+                { "id": "…", "version": 2, "title": "你的年龄段", "parent_id": "…v1 id" },
+                { "id": "…", "version": 3, "title": "你的年龄", "parent_id": "…v1 id" } ] }
+```
+
+### 5b.6 恢复旧版本
+
+`POST /api/bank-questions/:id/revert`，body `{ "version": 1 }` → `201`。以旧版本内容在树末端追加新版本（不删除任何历史）
+
+### 5b.7 共享 / 取消共享（树级）
+
+`POST /api/bank-questions/:id/share` / `POST /api/bank-questions/:id/unshare`，body `{ "username": "bob" }`
+
+- 共享对整棵版本树生效（作者出新版本后被共享者仍然可见）
+- 被共享者权限：读、选题进问卷、fork；不能修改原题（403）
+- 不能共享给自己（400）；用户不存在（404）
+
+### 5b.8 使用情况（被哪些问卷使用）
+
+`GET /api/bank-questions/:id/usage` → `200`
+
+```json
+{ "version_count": 3, "survey_count": 2,
+  "surveys": [ { "id": "…", "title": "问卷A", "status": "published",
+                 "used_versions": [ { "bank_version": 1, "title": "你的年龄" } ] } ] }
+```
+
+### 5b.9 单题跨问卷统计（聚合管道）
+
+`GET /api/bank-questions/:id/stats` → `200`
+
+- 范围：该题**整棵版本树**在所有问卷中的快照作答
+- 选项类：`option_counts: [{key,label,count}]`；数字类：`number_stats:{count,min,max,avg}`；文本类：`text_stats:{count,samples[≤20]}`；日期类：`date_counts:[{date,count}]`
+- 另返回 `survey_count`（引用问卷数）、`response_count`（作答人数）、`total_answers`
+
+### 5b.10 把问卷题存为常用题
+
+`POST /api/bank-questions/from-question`，body `{ "question_id": "…" }` → `201`。只能保存自己问卷里的题目（403），生成一棵新版本树的 v1
+
+### 5b.11 从题库选题加入问卷
+
+`POST /api/surveys/:id/questions`，body 传 `{ "bank_question_id": "…" }`（替代题型/题干/选项字段）
+
+- 需要「owner 或被共享者」权限（403）；题目内容整体拷贝为问卷快照，并写入 `bank_question_id` / `bank_version` 溯源字段
+- 仅草稿状态可用；已发布/已关闭问卷 409（题目结构冻结）
+
+---
+
 ## 6. 其他
 
 `GET /api/health` → `{ "ok": true, "ts": 1760000000000 }`

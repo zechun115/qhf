@@ -1,7 +1,9 @@
 'use strict';
 const express = require('express');
+const mongoose = require('mongoose');
 const Question = require('../models/Question');
 const Survey = require('../models/Survey');
+const BankQuestion = require('../models/BankQuestion');
 const { asyncHandler, badRequest, notFound, forbidden, conflict } = require('../utils/errors');
 const { requireAuth } = require('../middleware/auth');
 const { loadOwnedSurvey } = require('./surveys');
@@ -95,14 +97,42 @@ router.post(
     const survey = await loadOwnedSurvey(req);
     assertDraft(survey);
 
-    const payload = buildQuestionPayload(req.body);
+    // ── 第二阶段：支持从题库选题（需求①⑦）──
+    // 题目内容整体拷贝成问卷自己的快照，同时记录 bank_question_id / bank_version 溯源。
+    // 之后题库题出新版本不会影响这里（需求③），跨问卷统计与使用反查靠溯源字段（需求⑥⑧）。
+    let snapshotPayload = req.body;
+    let bankRef = { bank_question_id: null, bank_version: null };
+    if (req.body && req.body.bank_question_id) {
+      const bankQ = await BankQuestion.findById(req.body.bank_question_id);
+      if (!bankQ) throw notFound('题库题目不存在');
+      const isOwner = String(bankQ.owner_id) === String(req.user.id);
+      const isShared = (bankQ.shared_with || []).some((u) => String(u) === String(req.user.id));
+      if (!isOwner && !isShared) throw forbidden('没有使用该题库题目的权限');
+      snapshotPayload = {
+        type: bankQ.type,
+        title: bankQ.title,
+        required: bankQ.required,
+        options: bankQ.options.map((o) => ({ key: o.key, label: o.label })),
+        constraints: bankQ.constraints,
+        jump_rules: req.body.jump_rules, // 从题库选题后仍可为本问卷单独配跳转规则
+      };
+      bankRef = { bank_question_id: bankQ._id, bank_version: bankQ.version };
+    }
+
+    const payload = buildQuestionPayload(snapshotPayload);
     const last = await Question.findOne({ survey_id: survey._id }).sort({ order: -1 });
     const order = last ? last.order + 1 : 1;
 
     const existing = await Question.find({ survey_id: survey._id });
-    const rules = validateJumpRules(req.body.jump_rules, { ...payload, order }, existing);
+    const rules = validateJumpRules(snapshotPayload.jump_rules, { ...payload, order }, existing);
 
-    const question = await Question.create({ survey_id: survey._id, order, ...payload, jump_rules: rules });
+    const question = await Question.create({
+      survey_id: survey._id,
+      order,
+      ...payload,
+      jump_rules: rules,
+      ...bankRef,
+    });
     survey.question_count = order;
     survey.updated_at = new Date();
     await survey.save();

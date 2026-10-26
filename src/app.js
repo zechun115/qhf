@@ -19,6 +19,7 @@ function createApp() {
   app.use('/api/surveys', require('./routes/stats'));
   app.use('/api/surveys', require('./routes/surveys').router);
   app.use('/api', require('./routes/questions').router);
+  app.use('/api/bank-questions', require('./routes/bank').router);
 
   // 未匹配的 API 路由统一 404，避免返回 HTML 让前端解析失败
   app.use('/api', (req, res) => {

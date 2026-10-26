@@ -79,6 +79,15 @@ const questionSchema = new mongoose.Schema(
     },
 
     jump_rules: { type: [jumpRuleSchema], default: [] },
+
+    // ── 第二阶段新增：题库溯源字段 ─────────────────────────────
+    // 题目内容仍是完整快照（加入问卷那一刻拷贝），这两个字段只回答
+    // 「这题来自题库哪个版本」：usage 反查（需求六）与跨问卷统计（需求八）
+    // 靠它们把问卷题和题库版本树连起来。
+    // 旧问卷没有这两个字段（null），读取端按「非题库题」分支处理，兼容不迁移。
+    bank_question_id: { type: mongoose.Schema.Types.ObjectId, ref: 'BankQuestion', default: null },
+    bank_version: { type: Number, default: null }, // 选题时的题库版本号快照
+
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
   },
@@ -89,5 +98,7 @@ const questionSchema = new mongoose.Schema(
 questionSchema.index({ survey_id: 1, order: 1 }, { unique: true });
 // 跳转目标反查（删除题目时要清理指向它的规则）
 questionSchema.index({ 'jump_rules.target_question_id': 1 });
+// 题库溯源反查：某道题库题（的所有版本）被哪些问卷使用（需求六 / 需求八）
+questionSchema.index({ bank_question_id: 1 });
 
 module.exports = mongoose.model('Question', questionSchema);

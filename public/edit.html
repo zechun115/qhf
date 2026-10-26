@@ -11,6 +11,7 @@
     <div class="brand">问卷系统</div>
     <div class="links">
       <a href="/dashboard.html">我的问卷</a>
+      <a href="/bank.html">题目库</a>
       <a href="#" id="logout">退出</a>
     </div>
   </div>
@@ -59,7 +60,26 @@
     <div class="card" id="q-card">
       <div class="between">
         <h2>题目列表</h2>
-        <button class="primary small" id="add-toggle">添加题目</button>
+        <div class="row" style="gap:6px">
+          <button class="small" id="bank-toggle">从题库选题</button>
+          <button class="primary small" id="add-toggle">添加题目</button>
+        </div>
+      </div>
+
+      <!-- 从题库选题弹窗 -->
+      <div class="modal hidden" id="bank-modal">
+        <div class="modal-box" style="max-width:560px">
+          <div class="between" style="margin-bottom:12px">
+            <h3 style="margin:0">从题库选题</h3>
+            <button class="small" id="bank-close">✕</button>
+          </div>
+          <div class="row" style="gap:0;margin-bottom:8px">
+            <button class="small" id="bank-tab-mine">我的题目</button>
+            <button class="small" id="bank-tab-shared">共享给我的</button>
+          </div>
+          <div id="bank-list" style="max-height:360px;overflow:auto"><p class="muted">加载中…</p></div>
+          <p class="small muted" style="margin-top:10px">选题后会复制一份快照加入本问卷；之后题库出新版本不影响本问卷。</p>
+        </div>
       </div>
 
       <!-- 题目表单 -->
@@ -309,7 +329,8 @@
             <div class="between">
               <div class="grow">
                 <div><span class="tag">第 ${q.order} 题</span> <strong>${esc(q.title)}</strong>
-                  <span class="small muted">（${typeLabel[q.type]}${q.required ? ' · 必答' : ''}）</span></div>
+                  <span class="small muted">（${typeLabel[q.type]}${q.required ? ' · 必答' : ''}）</span>
+                  ${q.bank_question_id ? '<span class="tag">题库题 v' + q.bank_version + '</span>' : ''}</div>
                 <div class="small muted">${
                   q.type === 'rating'
                     ? '固定选项：1 星 ~ 5 星'
@@ -325,6 +346,7 @@
               ${
                 editable
                   ? `<div class="row" style="gap:6px">
+                      <button class="small" data-save-bank="${q.id}">存为常用题</button>
                       <button class="small" data-edit="${q.id}">编辑</button>
                       <button class="small" data-jump="${q.id}">跳转</button>
                       <button class="small" data-up="${q.id}" ${i === 0 ? 'disabled' : ''}>上移</button>
@@ -340,6 +362,7 @@
         .join('');
 
       box.querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => openForm(b.dataset.edit)));
+      box.querySelectorAll('[data-save-bank]').forEach((b) => (b.onclick = () => saveToBank(b.dataset.saveBank)));
       box.querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => removeQuestion(b.dataset.del)));
       box.querySelectorAll('[data-jump]').forEach(
         (b) =>
@@ -462,6 +485,74 @@
 
     document.getElementById('add-toggle').onclick = () => openForm(null);
     document.getElementById('q-form-cancel').onclick = () => document.getElementById('q-form').classList.add('hidden');
+
+    // ── 从题库选题（第二阶段）──
+    let bankScope = 'mine';
+    async function loadBank() {
+      const box = document.getElementById('bank-list');
+      try {
+        const data = await api('/bank-questions?scope=' + bankScope);
+        if (!data.questions.length) {
+          box.innerHTML = '<p class="muted">' + (bankScope === 'mine' ? '题库还是空的，可先在「题目库」页创建，或把本问卷的题「存为常用题」。' : '还没有人共享题目给你。') + '</p>';
+          return;
+        }
+        box.innerHTML = data.questions
+          .map(
+            (q) => `
+          <div class="list-item">
+            <div class="grow">
+              <div class="title"><span class="tag">v${q.version}</span> <strong>${esc(q.title)}</strong>
+                <span class="small muted">（${typeLabel[q.type]}）</span></div>
+              <div class="small muted">${
+                q.type === 'rating' ? '1~5 星' : q.options && q.options.length ? q.options.map((o) => esc(o.label)).join(' / ') : '无选项'
+              }</div>
+            </div>
+            <button class="small primary" data-use="${q.id}">选用</button>
+          </div>`
+          )
+          .join('');
+        box.querySelectorAll('[data-use]').forEach((b) => {
+          b.onclick = async () => {
+            try {
+              await api('/surveys/' + id + '/questions', { method: 'POST', body: { bank_question_id: b.dataset.use } });
+              document.getElementById('bank-modal').classList.add('hidden');
+              await load();
+              toast('已从题库添加题目');
+            } catch (err) {
+              alert(err.message);
+            }
+          };
+        });
+      } catch (err) {
+        box.innerHTML = '<p class="err">' + esc(err.message) + '</p>';
+      }
+    }
+    document.getElementById('bank-toggle').onclick = () => {
+      document.getElementById('bank-modal').classList.remove('hidden');
+      loadBank();
+    };
+    document.getElementById('bank-close').onclick = () => document.getElementById('bank-modal').classList.add('hidden');
+    document.getElementById('bank-modal').onclick = (e) => {
+      if (e.target.id === 'bank-modal') e.target.classList.add('hidden');
+    };
+    document.getElementById('bank-tab-mine').onclick = () => {
+      bankScope = 'mine';
+      loadBank();
+    };
+    document.getElementById('bank-tab-shared').onclick = () => {
+      bankScope = 'shared';
+      loadBank();
+    };
+
+    // 把问卷里的某道题保存为题库常用题（第二阶段需求①）
+    async function saveToBank(qid) {
+      try {
+        await api('/bank-questions/from-question', { method: 'POST', body: { question_id: qid } });
+        toast('已保存到题库，可在「题目库」页查看');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
 
     document.getElementById('q-save').onclick = async () => {
       const msg = document.getElementById('q-msg');

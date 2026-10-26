@@ -7,6 +7,7 @@ const User = require('../src/models/User');
 const Survey = require('../src/models/Survey');
 const Question = require('../src/models/Question');
 const Response = require('../src/models/Response');
+const BankQuestion = require('../src/models/BankQuestion');
 
 const BASE = process.env.MONGO_TEST_URI || 'mongodb://127.0.0.1:27017';
 
@@ -21,6 +22,7 @@ async function setup(dbName) {
     Survey.syncIndexes(),
     Question.syncIndexes(),
     Response.syncIndexes(),
+    BankQuestion.syncIndexes(),
   ]);
   const app = createApp();
   return { app, api: request(app) };
