@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>编辑问卷</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%23ffcd75%27/%3E%3Crect y=%275%27 width=%2716%27 height=%276%27 fill=%27%23d94040%27/%3E%3Crect y=%2711%27 width=%2716%27 height=%275%27 fill=%27%233b5bd9%27/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -235,7 +236,7 @@
             if (b.dataset.act === 'publish') await api('/surveys/' + id + '/publish', { method: 'POST' });
             if (b.dataset.act === 'close') await api('/surveys/' + id + '/close', { method: 'POST' });
             if (b.dataset.act === 'delete') {
-              if (!confirm('确认删除这份草稿问卷？')) return;
+              if (!(await App.confirm('确认删除这份草稿问卷？题目会一并删除，且不可恢复。', { title: '删除草稿', okText: '删除', danger: true }))) return;
               await api('/surveys/' + id, { method: 'DELETE' });
               location.href = '/dashboard.html';
               return;
@@ -299,7 +300,13 @@
     function renderQuestions() {
       const box = document.getElementById('questions');
       if (!questions.length) {
-        box.innerHTML = '<p class="muted">还没有题目，点右上角「添加题目」。</p>';
+        box.innerHTML =
+          '<div class="empty">这份问卷还没有题目<br /><span class="small">加一道题，或从题库直接选题</span>' +
+          '<div class="row" style="justify-content:center;margin-top:14px">' +
+          (survey.status === 'draft' ? '<button class="small primary" id="empty-add">＋ 添加题目</button>' : '') +
+          '</div></div>';
+        const addBtn = document.getElementById('empty-add');
+        if (addBtn) addBtn.onclick = () => openForm(null);
         return;
       }
       const editable = survey.status === 'draft';
@@ -471,7 +478,7 @@
         await load();
         toast('跳转规则已添加');
       } catch (err) {
-        toast(err.message);
+        toast(err.message, 'err');
       }
     }
 
@@ -483,7 +490,7 @@
         await load();
         toast('已删除规则');
       } catch (err) {
-        toast(err.message);
+        toast(err.message, 'err');
       }
     }
 
@@ -520,6 +527,9 @@
       document.getElementById('q-max').value = c.max != null ? c.max : '';
       document.getElementById('q-integer').checked = Boolean(c.integer);
       toggleTypeFields();
+      // 打开表单直接把光标放进题干，少一次点击
+      form.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      document.getElementById('q-title').focus({ preventScroll: true });
     }
 
     document.getElementById('add-toggle').onclick = () => openForm(null);
@@ -558,7 +568,7 @@
               await load();
               toast('已从题库添加题目');
             } catch (err) {
-              toast(err.message);
+              toast(err.message, 'err');
             }
           };
         });
@@ -589,11 +599,12 @@
         await api('/bank-questions/from-question', { method: 'POST', body: { question_id: qid } });
         toast('已保存到题库，可在「题目库」页查看');
       } catch (err) {
-        toast(err.message);
+        toast(err.message, 'err');
       }
     }
 
-    document.getElementById('q-save').onclick = async () => {
+    document.getElementById('q-save').onclick = async (ev) => {
+      const btn = ev.currentTarget;
       const msg = document.getElementById('q-msg');
       msg.classList.add('hidden');
       const type = document.getElementById('q-type').value;
@@ -622,25 +633,37 @@
       }
 
       try {
+        App.busy(btn, true);
         if (editingId) await api('/questions/' + editingId, { method: 'PATCH', body });
         else await api('/surveys/' + id + '/questions', { method: 'POST', body });
         document.getElementById('q-form').classList.add('hidden');
         await load();
         toast('已保存');
+        // 保存后把视角带到改动的那一行并闪一下，题目多时不用自己找
+        const rows = document.querySelectorAll('#questions .q-item');
+        const target = rows[rows.length - 1];
+        if (target) {
+          target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          target.classList.add('flash');
+          setTimeout(() => target.classList.remove('flash'), 1000);
+        }
       } catch (err) {
         msg.textContent = err.message;
         msg.classList.remove('hidden');
+        msg.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } finally {
+        App.busy(btn, false);
       }
     };
 
     async function removeQuestion(qid) {
-      if (!confirm('确认删除这道题？')) return;
+      if (!(await App.confirm('确认删除这道题？已填写的答卷不受影响，但统计里不再出现该题。', { title: '删除题目', okText: '删除', danger: true }))) return;
       try {
         await api('/questions/' + qid, { method: 'DELETE' });
         await load();
         toast('已删除');
       } catch (err) {
-        toast(err.message);
+        toast(err.message, 'err');
       }
     }
 
@@ -654,7 +677,7 @@
         await api('/surveys/' + id + '/questions/order', { method: 'PUT', body: { question_ids: ids } });
         await load();
       } catch (err) {
-        toast(err.message);
+        toast(err.message, 'err');
       }
     }
 

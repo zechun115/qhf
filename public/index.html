@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>登录 · 问卷系统</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%23ffcd75%27/%3E%3Crect y=%275%27 width=%2716%27 height=%276%27 fill=%27%23d94040%27/%3E%3Crect y=%2711%27 width=%2716%27 height=%275%27 fill=%27%233b5bd9%27/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -12,22 +13,22 @@
       <h1>问卷系统</h1>
       <p class="sub">基于 MongoDB 的在线问卷平台</p>
 
-      <div class="tabs">
-        <button id="tab-login" class="active" type="button">登录</button>
-        <button id="tab-register" type="button">注册</button>
+      <div class="tabs" role="tablist">
+        <button id="tab-login" class="active" type="button" role="tab" aria-selected="true">登录</button>
+        <button id="tab-register" type="button" role="tab" aria-selected="false">注册</button>
       </div>
 
       <form id="form">
         <label class="field">
           <span>用户名（3~32 个字符）</span>
-          <input type="text" id="username" autocomplete="username" />
+          <input type="text" id="username" autocomplete="username" autofocus />
         </label>
         <label class="field">
           <span>密码（6~64 个字符）</span>
           <input type="password" id="password" autocomplete="current-password" />
         </label>
         <div class="err hidden" id="msg"></div>
-        <button class="primary" style="width:100%;margin-top:8px" type="submit" id="submit">登录</button>
+        <button class="primary block" style="margin-top:8px" type="submit" id="submit">登录</button>
       </form>
       <p class="small muted" style="margin:16px 0 0;text-align:center;line-height:1.9">
         演示账号 <b>demo</b> / <b>123456</b>，登录后可看到示例问卷与题目库
@@ -44,11 +45,30 @@
 
     function setMode(next) {
       mode = next;
-      document.getElementById('tab-login').classList.toggle('active', next === 'login');
-      document.getElementById('tab-register').classList.toggle('active', next === 'register');
-      submitBtn.textContent = next === 'login' ? '登录' : '注册并登录';
+      const isLogin = next === 'login';
+      document.getElementById('tab-login').classList.toggle('active', isLogin);
+      document.getElementById('tab-register').classList.toggle('active', !isLogin);
+      document.getElementById('tab-login').setAttribute('aria-selected', String(isLogin));
+      document.getElementById('tab-register').setAttribute('aria-selected', String(!isLogin));
+      submitBtn.textContent = isLogin ? '登录' : '注册并登录';
+      document.getElementById('password').setAttribute(
+        'autocomplete', isLogin ? 'current-password' : 'new-password'
+      );
+      hideMsg();
+    }
+
+    function showMsg(text) {
+      msg.textContent = text;
+      msg.classList.remove('hidden');
+    }
+    function hideMsg() {
       msg.classList.add('hidden');
     }
+
+    // 一改输入就收掉上一次的错误，避免红条一直挂在下面
+    ['username', 'password'].forEach((id) => {
+      document.getElementById(id).addEventListener('input', hideMsg);
+    });
 
     document.getElementById('tab-login').onclick = () => setMode('login');
     document.getElementById('tab-register').onclick = () => setMode('register');
@@ -67,23 +87,26 @@
 
     document.getElementById('form').onsubmit = async (e) => {
       e.preventDefault();
-      msg.classList.add('hidden');
-      submitBtn.disabled = true;
-      const original = submitBtn.textContent;
-      submitBtn.textContent = mode === 'login' ? '登录中…' : '注册中…';
+      hideMsg();
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
+      if (!username || !password) {
+        showMsg('请输入用户名和密码');
+        (username ? document.getElementById('password') : document.getElementById('username')).focus();
+        return;
+      }
+      App.busy(submitBtn, true);
       try {
         const data = await api('/auth/' + mode, { method: 'POST', body: { username, password }, auth: false });
         Auth.save(data.token, data.user);
         const next = safeNext(query('next'));
         location.href = next || '/dashboard.html';
       } catch (err) {
-        msg.textContent = err.message;
-        msg.classList.remove('hidden');
+        showMsg(err.message);
+        document.getElementById('password').focus();
+        document.getElementById('password').select();
       } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = original;
+        App.busy(submitBtn, false);
       }
     };
   </script>

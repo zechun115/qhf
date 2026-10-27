@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>填写问卷</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%23ffcd75%27/%3E%3Crect y=%275%27 width=%2716%27 height=%276%27 fill=%27%23d94040%27/%3E%3Crect y=%2711%27 width=%2716%27 height=%275%27 fill=%27%233b5bd9%27/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body class="fill-page">
@@ -196,6 +197,14 @@
 
       document.getElementById('next').onclick = onNext;
       document.getElementById('prev').onclick = onPrev;
+
+      // 换题时内容轻落入场；桌面端把焦点交给第一个可操作控件，
+      // 键盘用户不必再用鼠标点一下才能作答。
+      body.classList.remove('enter');
+      void body.offsetWidth;
+      body.classList.add('enter');
+      const focusTarget = optBox.querySelector('input:not([type="hidden"]), textarea, select');
+      if (focusTarget && window.innerWidth > 620) focusTarget.focus({ preventScroll: true });
     }
 
     /** 回退：按访问栈回上一题，答案保留。跳转规则下 path 会重算，栈比下标更可靠。 */
@@ -218,6 +227,7 @@
       if (!check.ok) {
         errBox.textContent = check.errors.join('\n');
         errBox.classList.remove('hidden');
+        errBox.scrollIntoView({ block: 'center', behavior: 'smooth' });
         return;
       }
 
@@ -234,8 +244,7 @@
 
       // 已是路径上的最后一题 → 提交
       const btn = document.getElementById('next');
-      btn.disabled = true;
-      btn.textContent = '提交中…';
+      App.busy(btn, true);
       const payload = Object.keys(answers).map((qid) => ({ question_id: qid, ...answers[qid] }));
       try {
         const res = await api('/fill/' + code + '/submit', { method: 'POST', body: { answers: payload } });
@@ -250,8 +259,7 @@
           '</span></div>' +
           '<p class="small muted" style="text-align:center;margin:0">你可以关闭本页了。</p>';
       } catch (err) {
-        btn.disabled = false;
-        btn.textContent = '提交答卷';
+        App.busy(btn, false);
         const details = err.data && err.data.error && err.data.error.details;
         if (details && details.errors) {
           errBox.textContent = details.errors
@@ -261,6 +269,7 @@
           errBox.textContent = err.message;
         }
         errBox.classList.remove('hidden');
+        errBox.scrollIntoView({ block: 'center', behavior: 'smooth' });
       }
     }
 
@@ -294,6 +303,21 @@
         document.getElementById('body').innerHTML = '<p class="err">' + esc(err.message) + '</p>';
       }
     }
+
+    /* 键盘走完全程：Enter 等价于「下一题 / 提交」。
+       输入框里按 Enter 不动（避免和换行、下拉展开冲突），
+       按钮上按 Enter 交给按钮自己。 */
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target;
+      const tag = t && t.tagName;
+      if (tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A') return;
+      const next = document.getElementById('next');
+      if (next && !next.classList.contains('busy')) {
+        e.preventDefault();
+        next.click();
+      }
+    });
 
     load();
   </script>

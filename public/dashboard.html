@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>我的问卷</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%23ffcd75%27/%3E%3Crect y=%275%27 width=%2716%27 height=%276%27 fill=%27%23d94040%27/%3E%3Crect y=%2711%27 width=%2716%27 height=%275%27 fill=%27%233b5bd9%27/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -145,9 +146,17 @@
       if (e.key === 'Enter') document.getElementById('create-ok').click();
     };
 
-    document.getElementById('create-ok').onclick = async () => {
+    document.getElementById('create-ok').onclick = async (ev) => {
       const msg = document.getElementById('create-msg');
+      const btn = ev.currentTarget;
       msg.classList.add('hidden');
+      if (!document.getElementById('new-title').value.trim()) {
+        msg.textContent = '先给问卷起个标题';
+        msg.classList.remove('hidden');
+        document.getElementById('new-title').focus();
+        return;
+      }
+      App.busy(btn, true);
       try {
         const data = await api('/surveys', {
           method: 'POST',
@@ -162,6 +171,8 @@
       } catch (err) {
         msg.textContent = err.message;
         msg.classList.remove('hidden');
+      } finally {
+        App.busy(btn, false);
       }
     };
 
@@ -226,9 +237,25 @@
 
         if (!data.items.length) {
           pager.innerHTML = '';
+          // 空态给一个可点的下一步，而不是只留一句说明
           box.innerHTML = keyword || status
-            ? '<div class="empty">没有符合条件的问卷<br /><span class="small">换个关键词或状态试试</span></div>'
-            : '<div class="empty">还没有问卷<br /><span class="small">点右上角「新建问卷」，3 步就能发布第一份</span></div>';
+            ? '<div class="empty">没有符合条件的问卷<br /><span class="small">换个关键词或状态试试</span>' +
+              '<div class="row" style="justify-content:center;margin-top:14px"><button class="small" id="empty-reset">清空筛选条件</button></div></div>'
+            : '<div class="empty">还没有问卷<br /><span class="small">新建一份，加几道题就能发布</span>' +
+              '<div class="row" style="justify-content:center;margin-top:14px"><button class="small primary" id="empty-create">＋ 新建问卷</button></div></div>';
+          const reset = document.getElementById('empty-reset');
+          if (reset) {
+            reset.onclick = () => {
+              keyword = '';
+              status = '';
+              page = 1;
+              document.getElementById('kw').value = '';
+              document.querySelectorAll('#status-seg button').forEach((b) => b.classList.toggle('on', b.dataset.status === ''));
+              load();
+            };
+          }
+          const createBtn = document.getElementById('empty-create');
+          if (createBtn) createBtn.onclick = () => document.getElementById('create-btn').click();
           return;
         }
 
@@ -302,7 +329,8 @@
 
         box.querySelectorAll('[data-act="dup"]').forEach((btn) => {
           btn.onclick = async () => {
-            if (!confirm('复制「' + btn.dataset.title + '」为一份新草稿问卷？')) return;
+            if (!(await App.confirm('复制「' + btn.dataset.title + '」为一份新草稿问卷？题目会一并复制。', { okText: '复制为草稿' }))) return;
+            App.busy(btn, true);
             try {
               const res = await api('/surveys/' + btn.dataset.id + '/duplicate', { method: 'POST' });
               toast('已创建副本，共复制 ' + res.copied_questions + ' 道题');
@@ -310,21 +338,26 @@
               load();
               loadOverview();
             } catch (err) {
-              toast(err.message);
+              toast(err.message, 'err');
+            } finally {
+              App.busy(btn, false);
             }
           };
         });
 
         box.querySelectorAll('[data-act="del"]').forEach((btn) => {
           btn.onclick = async () => {
-            if (!confirm('删除「' + btn.dataset.title + '」？题目会一并删除，且不可恢复。')) return;
+            if (!(await App.confirm('删除「' + btn.dataset.title + '」？题目会一并删除，且不可恢复。', { title: '删除问卷', okText: '删除', danger: true }))) return;
+            App.busy(btn, true);
             try {
               await api('/surveys/' + btn.dataset.id, { method: 'DELETE' });
               toast('问卷已删除');
               load();
               loadOverview();
             } catch (err) {
-              toast(err.message);
+              toast(err.message, 'err');
+            } finally {
+              App.busy(btn, false);
             }
           };
         });
@@ -357,7 +390,7 @@
         URL.revokeObjectURL(a.href);
         toast('答卷已导出');
       } catch (err) {
-        toast(err.message);
+        toast(err.message, 'err');
       }
     }
 

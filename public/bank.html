@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>题目库</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%23ffcd75%27/%3E%3Crect y=%275%27 width=%2716%27 height=%276%27 fill=%27%23d94040%27/%3E%3Crect y=%2711%27 width=%2716%27 height=%275%27 fill=%27%233b5bd9%27/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -217,7 +218,13 @@
 
     // ── 新建题目 ──
     const newBox = document.getElementById('new-box');
-    document.getElementById('new-toggle').onclick = () => newBox.classList.toggle('hidden');
+    document.getElementById('new-toggle').onclick = () => {
+      newBox.classList.toggle('hidden');
+      if (!newBox.classList.contains('hidden')) {
+        newBox.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        document.getElementById('b-title').focus({ preventScroll: true });
+      }
+    };
     document.getElementById('b-cancel').onclick = () => newBox.classList.add('hidden');
     document.getElementById('b-type').onchange = () => {
       const t = document.getElementById('b-type').value;
@@ -225,13 +232,15 @@
       document.getElementById('b-options-box').classList.toggle('hidden', !withOptions);
       document.getElementById('b-rating-hint').classList.toggle('hidden', t !== 'rating');
     };
-    document.getElementById('b-save').onclick = async () => {
+    document.getElementById('b-save').onclick = async (ev) => {
+      const btn = ev.currentTarget;
       const msg = document.getElementById('b-msg');
       msg.classList.add('hidden');
       const t = document.getElementById('b-type').value;
       const body = { type: t, title: document.getElementById('b-title').value, required: document.getElementById('b-required').checked };
       if (['single', 'multiple', 'dropdown'].includes(t)) body.options = parseOptions(document.getElementById('b-options').value);
       try {
+        App.busy(btn, true);
         await api('/bank-questions', { method: 'POST', body });
         document.getElementById('b-title').value = '';
         document.getElementById('b-options').value = '';
@@ -241,6 +250,8 @@
       } catch (err) {
         msg.textContent = err.message;
         msg.classList.remove('hidden');
+      } finally {
+        App.busy(btn, false);
       }
     };
 
@@ -324,7 +335,7 @@
           await api('/bank-questions/' + qid + '/fork', { method: 'POST' });
           toast('已复制到我的题库（新题目 v1）');
           setTab('mine');
-        } catch (err) { toast(err.message); }
+        } catch (err) { toast(err.message, 'err'); }
       }
       if (name === 'edit') return openEdit(qid);
     }
@@ -412,13 +423,13 @@
           .join('');
         list.querySelectorAll('[data-revert]').forEach((b) => {
           b.onclick = async () => {
-            if (!confirm('以 v' + b.dataset.revert + ' 的内容生成一个新版本？（不会删除任何历史）')) return;
+            if (!(await App.confirm('以 v' + b.dataset.revert + ' 的内容生成一个新版本？历史版本不会被删除。', { title: '恢复旧版本', okText: '生成新版本' }))) return;
             try {
               await api('/bank-questions/' + qid + '/revert', { method: 'POST', body: { version: Number(b.dataset.revert) } });
               toast('已恢复为最新版本');
               modal.classList.add('hidden');
               load();
-            } catch (err) { toast(err.message); }
+            } catch (err) { toast(err.message, 'err'); }
           };
         });
       } catch (err) {
